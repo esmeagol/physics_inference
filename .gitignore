@@ -1,0 +1,62 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Local development
+*.local
+
+# Model files
+models/
+*.pt
+*.pth
+*.h5
+*.tflite
+*.onnx
+
+# Temporary files
+temp/
+*.tmp
+
+# Dataset files
+data/
+*.csv
+*.json
+*.pkl
+*.hdf5
+*.h5
