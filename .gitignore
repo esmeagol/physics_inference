@@ -49,6 +49,9 @@ models/
 *.tflite
 *.onnx
 
+# Assets
+assets/
+
 # Temporary files
 temp/
 *.tmp
