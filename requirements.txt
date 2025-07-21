@@ -1,0 +1,20 @@
+# Core Dependencies
+numpy>=1.20.0
+opencv-python>=4.5.0
+matplotlib>=3.4.0
+scipy>=1.7.0
+
+# For CVModelInference
+torch>=1.9.0
+torchvision>=0.10.0
+
+# For VLMInference
+transformers>=4.15.0
+torchmetrics>=0.7.0
+
+# Utilities
+pytest>=6.2.5
+black>=21.7b0
+isort>=5.9.0
+mypy>=0.910
+jupyter>=1.0.0
