@@ -41,6 +41,9 @@ logs/
 # Local development
 *.local
 
+# Assets directory
+assets/
+
 # Model files
 models/
 *.pt
