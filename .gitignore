@@ -66,3 +66,5 @@ data/
 *.pkl
 *.hdf5
 *.h5
+output/
+test_images/
