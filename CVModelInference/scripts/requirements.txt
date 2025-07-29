@@ -1,0 +1,27 @@
+# Requirements for Roboflow/PyTorch to TensorFlow/TFLite model conversion
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+tensorflow>=2.12.0
+numpy>=1.23.0
+
+# ONNX conversion dependencies
+onnx>=1.14.0
+onnxruntime>=1.15.0
+tf2onnx>=1.14.0
+
+# Roboflow and Ultralytics dependencies
+roboflow>=1.1.0
+ultralytics>=8.0.0
+
+# Optional dependencies for RF-DETR models
+# Note: RF-DETR package may need to be installed separately from source
+# as it might not be available on PyPI
+
+# Utility dependencies
+Pillow>=9.0.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+
+# Development dependencies
+pytest>=7.0.0
