@@ -13,8 +13,15 @@ from .table_detection import (
     perspective_transform
 )
 
+from .molt_tracker import (
+    MOLTTracker,
+    MOLTTrackerConfig
+)
+
 __all__ = [
     'detect_green_table',
     'order_points',
-    'perspective_transform'
+    'perspective_transform',
+    'MOLTTracker',
+    'MOLTTrackerConfig'
 ]
