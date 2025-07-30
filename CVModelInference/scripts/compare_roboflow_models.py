@@ -11,8 +11,12 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import cv2
 import numpy as np
-from roboflow import Roboflow
 from tqdm import tqdm
+
+# Import the InferenceRunner implementations
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from CVModelInference.roboflow_local_inference import RoboflowLocal
 
 def parse_model_id(full_model_id: str):
     """Parse a full model ID into workspace, model_id, and version."""
@@ -22,29 +26,30 @@ def parse_model_id(full_model_id: str):
         raise ValueError(f"Invalid model ID format: {full_model_id}. Expected format: workspace/model_id/version")
     return parts[0], parts[1], int(parts[2])
 
-def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str):
+def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str, server_url: str = "http://localhost:9001"):
     """
-    Initialize and load two Roboflow models.
+    Initialize and load two Roboflow models using the RoboflowLocal implementation.
     
     Args:
         api_key: Roboflow API key
         model1_full_id: First model full ID (e.g., 'workspace/model_id/1')
         model2_full_id: Second model full ID (e.g., 'workspace/model_id/1')
+        server_url: URL of the local Roboflow inference server
         
     Returns:
-        Tuple of (model1, model2)
+        Tuple of (model1, model2) as RoboflowLocal instances
     """
-    rf = Roboflow(api_key=api_key)
-    
     # Parse model 1
     workspace1, model1_id, version1 = parse_model_id(model1_full_id)
-    print(f"Loading model 1: {workspace1}/{model1_id} (v{version1})")
-    model1 = rf.workspace(workspace1).project(model1_id).version(version1).model
+    model1_id_full = f"{workspace1}/{model1_id}"
+    print(f"Loading model 1: {model1_id_full} (v{version1})")
+    model1 = RoboflowLocal(api_key=api_key, model_id=model1_id_full, version=version1, server_url=server_url)
     
     # Parse model 2
     workspace2, model2_id, version2 = parse_model_id(model2_full_id)
-    print(f"Loading model 2: {workspace2}/{model2_id} (v{version2})")
-    model2 = rf.workspace(workspace2).project(model2_id).version(version2).model
+    model2_id_full = f"{workspace2}/{model2_id}"
+    print(f"Loading model 2: {model2_id_full} (v{version2})")
+    model2 = RoboflowLocal(api_key=api_key, model_id=model2_id_full, version=version2, server_url=server_url)
     
     return model1, model2
 
@@ -53,7 +58,7 @@ def process_image(model, image_path: str, confidence: float = 0.5, overlap: int 
     Process a single image with the given model.
     
     Args:
-        model: Roboflow model
+        model: InferenceRunner implementation
         image_path: Path to input image
         confidence: Confidence threshold
         overlap: Overlap percentage
@@ -61,7 +66,7 @@ def process_image(model, image_path: str, confidence: float = 0.5, overlap: int 
     Returns:
         Dictionary containing detection results
     """
-    return model.predict(image_path, confidence=confidence, overlap=overlap).json()
+    return model.predict(image_path, confidence=confidence, overlap=overlap)
 
 def process_image_pair(model1, model2, image_path: str, output_dir: str, confidence: float = 0.5):
     """
@@ -270,10 +275,8 @@ def main():
                        help='Confidence threshold (0-1)')
     parser.add_argument('--limit', type=int, default=None,
                        help='Maximum number of images to process')
-    parser.add_argument('--version1', type=int, default=1,
-                       help='Version number for first model')
-    parser.add_argument('--version2', type=int, default=1,
-                       help='Version number for second model')
+    parser.add_argument('--server-url', type=str, default="http://localhost:9001",
+                       help='URL of the local Roboflow inference server')
     
     args = parser.parse_args()
     
@@ -284,7 +287,8 @@ def main():
     model1, model2 = load_roboflow_models(
         args.api_key,
         args.model1,
-        args.model2
+        args.model2,
+        server_url=args.server_url
     )
     
     # Process all images in the input directory

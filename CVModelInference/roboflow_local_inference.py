@@ -1,36 +1,38 @@
 """
-Roboflow Inference Module for CVModelInference
+Roboflow Local Inference Module for CVModelInference
 
 This module provides functionality to run inference using Roboflow models
-through a local inference server.
+through a local inference server, implementing the InferenceRunner interface.
 """
 
 import os
 import json
 import requests
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import numpy as np
 import cv2
 
-class RoboflowInference:
+from .inference_runner import InferenceRunner
+
+
+class RoboflowLocal(InferenceRunner):
     """
-    A class to handle Roboflow model inference using a local inference server.
+    Class for running inference with a local Roboflow server.
     
-    This class provides methods to perform inference on images using a Roboflow
-    model running on a local inference server.
+    This class implements the InferenceRunner interface for Roboflow models
+    running on a local inference server.
     """
     
-    def __init__(
-        self,
-        api_key: str,
-        model_id: str,
-        version: int,
-        server_url: str = "http://localhost:9001",
-        confidence: float = 0.5,
-        overlap: float = 0.5
-    ) -> None:
+    def __init__(self,
+                api_key: str,
+                model_id: str,
+                version: int,
+                server_url: str = "http://localhost:9001",
+                confidence: float = 0.5,
+                overlap: float = 0.5,
+                **kwargs):
         """
-        Initialize the Roboflow inference client.
+        Initialize the Roboflow local inference runner.
         
         Args:
             api_key: Roboflow API key
@@ -40,6 +42,7 @@ class RoboflowInference:
                        (default: http://localhost:9001)
             confidence: Minimum confidence threshold for predictions (0-1)
             overlap: Maximum overlap between predictions (0-1)
+            **kwargs: Additional parameters for model initialization
         """
         self.api_key = api_key
         self.model_id = model_id
@@ -56,12 +59,13 @@ class RoboflowInference:
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": f"Bearer {self.api_key}"
         }
+        
+        # Store model info
+        self.model_name = f"{self.model_id}:{self.version}"
     
-    def predict(
-        self, 
-        image: Union[str, np.ndarray], 
-        **kwargs
-    ) -> Dict:
+    def predict(self,
+               image: Union[str, np.ndarray],
+               **kwargs) -> Dict:
         """
         Run inference on an image.
         
@@ -112,11 +116,9 @@ class RoboflowInference:
             if isinstance(image, str) and 'files' in locals():
                 files['file'].close()
     
-    def predict_batch(
-        self, 
-        images: List[Union[str, np.ndarray]],
-        **kwargs
-    ) -> List[Dict]:
+    def predict_batch(self,
+                     images: List[Union[str, np.ndarray]],
+                     **kwargs) -> List[Dict]:
         """
         Run inference on a batch of images.
         
@@ -129,12 +131,10 @@ class RoboflowInference:
         """
         return [self.predict(img, **kwargs) for img in images]
     
-    def visualize_predictions(
-        self,
-        image: Union[str, np.ndarray],
-        predictions: Dict,
-        output_path: Optional[str] = None
-    ) -> np.ndarray:
+    def visualize_predictions(self,
+                             image: Union[str, np.ndarray],
+                             predictions: Dict,
+                             output_path: Optional[str] = None) -> np.ndarray:
         """
         Visualize the predictions on the input image.
         
@@ -162,14 +162,19 @@ class RoboflowInference:
             w = int(pred['width'])
             h = int(pred['height'])
             
+            # Determine color based on class (simple hash function for consistent colors)
+            class_name = pred['class']
+            color_hash = hash(class_name) % 0xFFFFFF
+            color = (color_hash & 0xFF, (color_hash >> 8) & 0xFF, (color_hash >> 16) & 0xFF)
+            
             # Draw rectangle
-            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
             
             # Add label and confidence
-            label = f"{pred['class']} {pred['confidence']:.2f}"
+            label = f"{class_name} {pred['confidence']:.2f}"
             cv2.putText(
                 img, label, (x, y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
             )
         
         # Save the visualization if output path is provided
@@ -177,3 +182,20 @@ class RoboflowInference:
             cv2.imwrite(output_path, img)
             
         return img
+    
+    def get_model_info(self) -> Dict[str, Any]:
+        """
+        Get information about the model.
+        
+        Returns:
+            Dictionary containing model information
+        """
+        return {
+            'name': self.model_name,
+            'type': 'roboflow',
+            'model_id': self.model_id,
+            'version': self.version,
+            'server_url': self.server_url,
+            'confidence': self.confidence,
+            'overlap': self.overlap
+        }

@@ -18,7 +18,7 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from CVModelInference.roboflow_inference import RoboflowInference
+from CVModelInference.roboflow_local_inference import RoboflowLocal
 
 # Load environment variables from .env file
 load_dotenv()
@@ -80,7 +80,7 @@ def process_video(
     os.makedirs(debug_dir, exist_ok=True)
     
     # Initialize Roboflow client
-    roboflow_client = RoboflowInference(
+    roboflow_client = RoboflowLocal(
         api_key=api_key,
         model_id=model_id,
         version=version,
