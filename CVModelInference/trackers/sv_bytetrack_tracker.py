@@ -8,12 +8,12 @@ which provides a more robust tracking solution compared to the custom implementa
 from __future__ import annotations
 
 import numpy as np
-from typing import Dict, List, Optional, Union, Any, Tuple, Set, cast
+from typing import Dict, List, Optional, Union, Any, Tuple, Set, cast, Sequence
 import cv2
 import supervision as sv
 import numpy.typing as npt
 
-from ..tracker import Tracker
+from ..tracker import Tracker, TrackerInfo, Track as ParentTrack
 
 # Type aliases
 NDArray = npt.NDArray[np.float32]
@@ -251,7 +251,7 @@ class SVByteTrackTracker(Tracker):
             self.tracks.pop(track_id, None)
             self.class_mapping.pop(track_id, None)
             
-    def get_tracker_info(self) -> Dict[str, Any]:
+    def get_tracker_info(self) -> TrackerInfo:
         """
         Get information about the tracker.
         
@@ -269,13 +269,12 @@ class SVByteTrackTracker(Tracker):
             },
             'frame_count': self.frame_count,
             'active_tracks': len(self.active_tracks),
-            'lost_tracks': len(self.lost_tracks),
             'total_tracks_created': self.total_tracks_created,
             'total_tracks_lost': self.total_tracks_lost,
             'total_fragmentations': self.total_fragmentations
         }
         
-    def visualize(self, frame: np.ndarray, tracks: List[Dict], 
+    def visualize(self, frame: np.ndarray, tracks: Sequence[ParentTrack], 
                  output_path: Optional[str] = None) -> np.ndarray:
         """
         Visualize the tracks on the input frame.

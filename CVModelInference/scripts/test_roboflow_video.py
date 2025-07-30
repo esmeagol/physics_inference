@@ -37,44 +37,36 @@ def process_video(
     input_video_path: str,
     output_dir: str,
     debug_dir: str,
-    api_key: str = None,
-    model_id: str = None,
-    version: int = None,
-    confidence: float = None,
+    api_key: str | None = None,
+    model_id: str | None = None,
+    version: int | None = None,
+    confidence: float | None = None,
     frame_skip: int = 0,
-    server_url: str = None,
-):
+    server_url: str | None = None,
+) -> None:
     # Apply defaults from environment variables if not provided
     if api_key is None:
-        api_key = DEFAULT_CONFIG['api_key']
+        api_key = str(DEFAULT_CONFIG['api_key']) if DEFAULT_CONFIG['api_key'] else None
     if model_id is None:
-        model_id = DEFAULT_CONFIG['project']
+        model_id = str(DEFAULT_CONFIG['project']) if DEFAULT_CONFIG['project'] else None
     if version is None:
-        version = DEFAULT_CONFIG['version']
+        version = int(DEFAULT_CONFIG['version']) if DEFAULT_CONFIG['version'] else None
     if confidence is None:
-        confidence = DEFAULT_CONFIG['confidence']
+        confidence = float(DEFAULT_CONFIG['confidence']) if DEFAULT_CONFIG['confidence'] else None
     if server_url is None:
-        server_url = DEFAULT_CONFIG['server_url']
+        server_url = str(DEFAULT_CONFIG['server_url']) if DEFAULT_CONFIG['server_url'] else None
         
     # Validate required parameters
     if not api_key:
         raise ValueError("Roboflow API key is required. Set it in .env file or pass as argument.")
     if not model_id:
         raise ValueError("Model ID is required. Set it in .env file or pass as argument.")
-    """
-    Process a video file with Roboflow inference.
-    
-    Args:
-        input_video_path: Path to input video file
-        output_dir: Directory to save the output video
-        debug_dir: Directory to save debug information
-        api_key: Roboflow API key
-        model_id: Roboflow model ID
-        version: Model version number
-        confidence: Minimum confidence threshold
-        frame_skip: Number of frames to skip between processing (0 = process every frame)
-        server_url: URL of the Roboflow inference server
-    """
+    if version is None:
+        raise ValueError("Model version is required.")
+    if confidence is None:
+        raise ValueError("Confidence threshold is required.")
+    if server_url is None:
+        raise ValueError("Server URL is required.")
     # Create output directories if they don't exist
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(debug_dir, exist_ok=True)
@@ -102,7 +94,7 @@ def process_video(
     # Prepare output video
     input_filename = Path(input_video_path).stem
     output_video_path = os.path.join(output_dir, f"{input_filename}_annotated.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
     out = cv2.VideoWriter(
         output_video_path,
         fourcc,

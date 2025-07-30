@@ -180,7 +180,7 @@ class Tracker:
     def process_video(self,
                      input_video_path: str,
                      output_video_path: str,
-                     confidence: float = None,
+                     confidence: float | None = None,
                      fps_limit: Optional[float] = None,
                      start_time: float = 0,
                      duration: Optional[float] = None,
@@ -238,7 +238,7 @@ class Tracker:
             os.makedirs(output_dir, exist_ok=True)
         
         # Set up video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter.fourcc(*'mp4v')
         out = cv2.VideoWriter(
             output_video_path,
             fourcc,

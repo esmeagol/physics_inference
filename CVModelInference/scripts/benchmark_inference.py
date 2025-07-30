@@ -42,7 +42,7 @@ class InferenceBenchmark:
         self.model2_id = model2_id
         
         # Results storage
-        self.results = {
+        self.results: dict[str, list[float]] = {
             'model1_direct': [],
             'model1_cropped': [],
             'model2_direct': [],
@@ -221,33 +221,13 @@ class InferenceBenchmark:
         
         return times
     
-    if table_contour is None:
-        # If no table detected, use the whole image
-        return cv2.resize(image, target_size), True
-    
-    # Get bounding rectangle with 5% margin
-    x, y, w, h = cv2.boundingRect(table_contour)
-    margin_x = int(w * 0.05)
-    margin_y = int(h * 0.05)
-    
-    # Apply margin (ensure within image bounds)
-    h_img, w_img = image.shape[:2]
-    x1 = max(0, x - margin_x)
-    y1 = max(0, y - margin_y)
-    x2 = min(w_img, x + w + margin_x)
-    y2 = min(h_img, y + h + margin_y)
-    
-    # Crop and resize
-    cropped = image[y1:y2, x1:x2]
-    return cv2.resize(cropped, target_size), True
-
-def run_inference(self, model_id: str, image_path: str, preprocess: bool = False) -> Optional[float]:
-    """
-    Run inference using local inference server and return time taken in seconds.
-    
-    Args:
-        model_id: Model ID in format workspace/model_id/version
-        image_path: Path to input image
+    def run_inference(self, model_id: str, image_path: str, preprocess: bool = False) -> Optional[float]:
+        """
+        Run inference using local inference server and return time taken in seconds.
+        
+        Args:
+            model_id: Model ID in format workspace/model_id/version
+            image_path: Path to input image
         preprocess: Whether to preprocess the image (crop table and resize)
         
     Returns:
@@ -307,17 +287,17 @@ def benchmark_image(self, image_path: str) -> Dict[str, float]:
     
     return times
 
-def run_benchmark(self, image_dir: str, num_images: int = None, warmup: int = 5) -> Dict[str, float]:
-    """
-    Run benchmark on all images in the directory.
-    
-    Args:
-        image_dir: Directory containing input images
-        num_images: Maximum number of images to process (None for all)
-        warmup: Number of warmup iterations per model and approach
-            
-    Returns:
-        Dictionary with average FPS for each approach
+    def run_benchmark(self, image_dir: str, num_images: int | None = None, warmup: int = 5) -> Dict[str, float]:
+        """
+        Run benchmark on all images in the directory.
+        
+        Args:
+            image_dir: Directory containing input images
+            num_images: Maximum number of images to process (None for all)
+            warmup: Number of warmup iterations per model and approach
+                
+        Returns:
+            Dictionary with average FPS for each approach
     """
     # Get list of image files
     image_files = [

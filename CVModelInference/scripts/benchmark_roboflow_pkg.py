@@ -39,7 +39,7 @@ class RoboflowBenchmark:
         self.model2 = self.rf.workspace(workspace2).project(model2).version(int(version2)).model
         
         # Results storage
-        self.results = {
+        self.results: dict[str, list[float]] = {
             'model1_direct': [],
             'model1_cropped': [],
             'model2_direct': [],
@@ -131,7 +131,7 @@ class RoboflowBenchmark:
         
         return times
     
-    def run_benchmark(self, image_dir: str, num_images: int = None, warmup: int = 1) -> Dict[str, float]:
+    def run_benchmark(self, image_dir: str, num_images: int | None = None, warmup: int = 1) -> Dict[str, float]:
         # Get list of image files
         image_files = [
             str(f) for f in Path(image_dir).glob('*')

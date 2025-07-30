@@ -8,7 +8,7 @@ import os
 import argparse
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -48,7 +48,7 @@ def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou
     return model1, model2
 
 
-def process_image(model, image: np.ndarray, confidence: float = 0.5) -> Dict:
+def process_image(model, image: np.ndarray, confidence: float = 0.5) -> Dict[Any, Any]:
     """
     Process a single image with the given model.
     
@@ -60,7 +60,8 @@ def process_image(model, image: np.ndarray, confidence: float = 0.5) -> Dict:
     Returns:
         Dictionary containing detection results
     """
-    return model.predict(image, confidence=confidence)
+    result = model.predict(image, confidence=confidence)
+    return dict(result) if result else {}
 
 
 def create_side_by_side_image(image: np.ndarray, results1: Dict, results2: Dict, 
@@ -112,7 +113,7 @@ def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
     predictions = results.get('predictions', [])
     
     # Count objects by class
-    class_counts = {}
+    class_counts: dict[str, int] = {}
     for pred in predictions:
         cls = pred['class']
         class_counts[cls] = class_counts.get(cls, 0) + 1
@@ -183,7 +184,7 @@ def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
 
 def process_images(model1, model2, input_dir: str, output_dir: str,
                   model1_name: str, model2_name: str, confidence: float = 0.5,
-                  image_extensions: List[str] = None) -> None:
+                  image_extensions: List[str] | None = None) -> None:
     """
     Process all images in a directory with two models and generate comparison images.
     

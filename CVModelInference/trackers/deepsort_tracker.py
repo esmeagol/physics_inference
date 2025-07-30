@@ -13,7 +13,7 @@ import cv2
 from scipy.optimize import linear_sum_assignment
 import numpy.typing as npt
 
-from ..tracker import Tracker, Frame, Detection, Track
+from ..tracker import Tracker, Frame, Detection, Track, TrackerInfo
 
 
 # Type aliases
@@ -101,7 +101,7 @@ class FeatureExtractor:
         # Concatenate histograms
         features = np.concatenate([hist_h, hist_s, hist_v]).astype(np.float32)
         
-        return features
+        return features.astype(np.float32)
 
 
 class DeepSORTTracker(Tracker[Dict[str, Any]]):
@@ -142,6 +142,44 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
         
         # Initialize feature extractor
         self.feature_extractor = FeatureExtractor()
+        
+    def get_tracker_info(self) -> TrackerInfo:
+        """
+        Get information about the tracker.
+        
+        Returns:
+            TrackerInfo: Dictionary containing tracker information with the following
+                          optional keys:
+                          {
+                              'name': str,  # tracker name
+                              'type': str,  # tracker type/algorithm
+                              'parameters': Dict[str, Any],  # tracker parameters
+                              'frame_count': int,  # number of frames processed
+                              'active_tracks': int,  # number of currently active tracks
+                              'total_tracks_created': int,  # total tracks created so far
+                              'total_tracks_lost': int,  # total tracks lost so far
+                              'total_fragmentations': int  # total track fragmentations
+                          }
+        """
+        active_tracks = len([t for t in self.trackers if t['time_since_update'] == 0])
+        total_created = max([t['id'] for t in self.trackers] + [0]) + 1
+        total_lost = len([t for t in self.trackers if t['time_since_update'] > 0])
+            
+        return {
+            'name': 'DeepSORT',
+            'type': 'appearance_based',
+            'parameters': {
+                'max_age': self.max_age,
+                'min_hits': self.min_hits,
+                'iou_threshold': self.iou_threshold,
+                'appearance_threshold': self.appearance_threshold
+            },
+            'frame_count': self.frame_count,
+            'active_tracks': active_tracks,
+            'total_tracks_created': total_created,
+            'total_tracks_lost': total_lost,
+            'total_fragmentations': 0  # Not implemented in this simple version
+        }
         
     def init(self, frame: Frame, detections: List[Detection]) -> bool:
         """
@@ -208,6 +246,233 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
         self.frame_count += 1
         return True
     
+    def _update_trackers(
+        self,
+        frame: Frame,
+        detections: List[Dict[str, Any]],
+        det_boxes: Optional[List[BBox]] = None,
+        det_features: Optional[List[FeatureVector]] = None,
+        det_info: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Update trackers with new detections.
+        
+        Args:
+            frame: Current video frame
+            detections: List of detection dictionaries
+            det_boxes: List of detection bounding boxes as [x, y, w, h]
+            det_features: List of feature vectors for each detection
+            det_info: List of additional detection info (class, confidence, etc.)
+            
+        Returns:
+            List of active tracks with updated states
+        """
+        # Initialize default values if not provided
+        det_boxes = det_boxes or []
+        det_features = det_features or []
+        det_info = det_info or []
+        
+        # If no detections, just update existing trackers
+        if not detections:
+            # Update all trackers and mark those that haven't been seen in a while
+            ret = []
+            to_remove = []
+            
+            for i, tracker in enumerate(self.trackers):
+                tracker['time_since_update'] += 1
+                tracker['age'] += 1
+                
+                # Remove dead trackers
+                if tracker['time_since_update'] > self.max_age:
+                    to_remove.append(i)
+                    continue
+                    
+                # Only return tracks that have been confirmed
+                if tracker['hits'] >= self.min_hits or self.frame_count <= self.min_hits:
+                    x, y, w, h = tracker['bbox']
+                    track = {
+                        'id': tracker['id'],
+                        'x': x,
+                        'y': y,
+                        'width': w,
+                        'height': h,
+                        'trail': tracker['trail'].copy(),
+                        'age': tracker['age'],
+                        'hits': tracker['hits'],
+                        'time_since_update': tracker['time_since_update']
+                    }
+                    
+                    # Add class info if available
+                    if tracker['class_info']:
+                        for key, value in tracker['class_info'].items():
+                            track[key] = value
+                            
+                    ret.append(track)
+            
+            # Remove dead tracks in reverse order to avoid index shifting
+            for i in sorted(to_remove, reverse=True):
+                if i < len(self.trackers):
+                    self.trackers.pop(i)
+                    
+            return ret
+            
+        # Process new detections
+        if detections and len(detections) > 0:
+            # Convert detections to format [x, y, w, h]
+            dets = []
+            det_features = []
+            det_info_list = []
+            
+            for detection in detections:
+                x = float(detection.get('x', 0))
+                y = float(detection.get('y', 0))
+                w = float(detection.get('width', 0))
+                h = float(detection.get('height', 0))
+                dets.append([x, y, w, h])
+                
+                # Extract features if not provided
+                if not det_features:
+                    features = self.feature_extractor.extract(frame, (x, y, w, h))
+                    det_features.append(features)
+                
+                # Store additional info
+                info = {}
+                for key in ['class', 'confidence', 'class_id']:
+                    if key in detection:
+                        info[key] = detection[key]
+                det_info_list.append(info)
+            
+            # Associate detections to trackers
+            matched, unmatched_dets, unmatched_trks = self._associate_detections_to_trackers(
+                dets, det_features, frame)
+                
+            # Update matched trackers with assigned detections
+            for det_idx, trk_idx in matched:
+                bbox_list = dets[det_idx]
+                self.trackers[trk_idx]['bbox'] = (float(bbox_list[0]), float(bbox_list[1]), float(bbox_list[2]), float(bbox_list[3]))
+                self.trackers[trk_idx]['time_since_update'] = 0
+                self.trackers[trk_idx]['hits'] += 1
+                self.trackers[trk_idx]['hit_streak'] += 1
+                
+                # Update features with moving average if features are available and valid
+                if (det_features and det_idx < len(det_features) and 
+                    hasattr(det_features[det_idx], 'size') and det_features[det_idx].size > 0):
+                    
+                    old_features = self.trackers[trk_idx]['features']
+                    new_features = det_features[det_idx]
+                    
+                    # Only update if both old and new features are valid
+                    if (hasattr(old_features, 'size') and old_features.size > 0 and 
+                        hasattr(new_features, 'size') and new_features.size > 0 and
+                        old_features.shape == new_features.shape):
+                        
+                        alpha = 0.7  # Weight for new features
+                        self.trackers[trk_idx]['features'] = alpha * new_features + (1 - alpha) * old_features
+                    else:
+                        # If old features are invalid but new ones are good, use the new ones
+                        self.trackers[trk_idx]['features'] = new_features
+                
+                # Update trail
+                x, y = int(dets[det_idx][0]), int(dets[det_idx][1])
+                self.trackers[trk_idx]['trail'].append((x, y))
+                if len(self.trackers[trk_idx]['trail']) > 30:  # Limit trail length
+                    self.trackers[trk_idx]['trail'] = self.trackers[trk_idx]['trail'][-30:]
+                    
+                # Update class info if confidence is higher
+                if (det_info_list and det_idx < len(det_info_list) and 
+                    'confidence' in det_info_list[det_idx] and 
+                    ('confidence' not in self.trackers[trk_idx]['class_info'] or 
+                     det_info_list[det_idx]['confidence'] > self.trackers[trk_idx]['class_info'].get('confidence', 0))):
+                    # Create proper ClassInfo from detection info
+                    class_info: ClassInfo = {}
+                    det_info_item = det_info_list[det_idx]
+                    if 'class' in det_info_item:
+                        class_info['class_name'] = str(det_info_item['class'])
+                    if 'class_id' in det_info_item:
+                        class_info['class_id'] = int(det_info_item['class_id'])
+                    if 'confidence' in det_info_item:
+                        class_info['confidence'] = float(det_info_item['confidence'])
+                    self.trackers[trk_idx]['class_info'] = class_info
+                
+            # Create and initialize new trackers for unmatched detections
+            for det_idx in unmatched_dets:
+                if det_idx >= len(dets) or (det_info_list and det_idx >= len(det_info_list)):
+                    continue
+                    
+                # Create proper ClassInfo from detection info
+                new_class_info: ClassInfo = {}
+                if det_info_list and det_idx < len(det_info_list):
+                    det_info_item = det_info_list[det_idx]
+                    if 'class' in det_info_item:
+                        new_class_info['class_name'] = str(det_info_item['class'])
+                    if 'class_id' in det_info_item:
+                        new_class_info['class_id'] = int(det_info_item['class_id'])
+                    if 'confidence' in det_info_item:
+                        new_class_info['confidence'] = float(det_info_item['confidence'])
+                
+                bbox_list = dets[det_idx]
+                tracker = {
+                    'id': self.next_id,
+                    'bbox': (float(bbox_list[0]), float(bbox_list[1]), float(bbox_list[2]), float(bbox_list[3])),
+                    'features': det_features[det_idx] if det_features and det_idx < len(det_features) else np.array([]),
+                    'class_info': new_class_info,
+                    'time_since_update': 0,
+                    'hits': 1,
+                    'hit_streak': 1,
+                    'age': 0,
+                    'trail': [(int(dets[det_idx][0]), int(dets[det_idx][1]))]
+                }
+                
+                self.trackers.append(tracker)
+                self.next_id += 1
+        
+        # Update all trackers and prepare return value
+        ret = []
+        to_remove = []
+        
+        for i, tracker in enumerate(self.trackers):
+            tracker['age'] += 1
+            
+            if tracker['time_since_update'] > 0:
+                tracker['hit_streak'] = 0
+                
+            tracker['time_since_update'] += 1
+            
+            # Remove dead trackers
+            if tracker['time_since_update'] > self.max_age:
+                to_remove.append(i)
+                continue
+                
+            # Only return tracks that have been updated recently enough
+            if tracker['hit_streak'] >= self.min_hits or self.frame_count <= self.min_hits:
+                x, y, w, h = tracker['bbox']
+                
+                track = {
+                    'id': tracker['id'],
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'trail': tracker['trail'].copy(),
+                    'age': tracker['age'],
+                    'hits': tracker['hits'],
+                    'time_since_update': tracker['time_since_update']
+                }
+                
+                # Add class info if available
+                if tracker['class_info']:
+                    for key, value in tracker['class_info'].items():
+                        track[key] = value
+                        
+                ret.append(track)
+        
+        # Remove dead tracks in reverse order to avoid index shifting
+        for i in sorted(to_remove, reverse=True):
+            if i < len(self.trackers):
+                self.trackers.pop(i)
+                
+        return ret
+
     def update(self, frame: Frame, detections: Optional[List[Detection]] = None) -> List[Track]:
         """
         Update the tracker with a new frame and optional new detections.
@@ -227,7 +492,7 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
                            'confidence': float,  # detection confidence
                            'id': Optional[Union[int, str]]  # optional track ID
                        }
-                        
+                       
         Returns:
             List[Track]: List of tracked objects with updated positions and IDs.
                          Each track is a dictionary containing at least:
@@ -252,6 +517,7 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
         # Extract features from detections
         det_boxes: List[BBox] = []
         det_features: List[FeatureVector] = []
+        det_info = []
         
         for det in detections:
             x = float(det.get('x', 0))
@@ -264,119 +530,138 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
             
             det_boxes.append((x, y, w, h))
             det_features.append(features)
+            
+            # Store additional info
+            info = {}
+            for key in ['class', 'confidence', 'class_id']:
+                if key in det:
+                    info[key] = det[key]
+            det_info.append(info)
         
         # Update trackers with new detections
-        return self._update_trackers(frame, detections, det_boxes, det_features)
-            
-        # Process new detections
-        if detections and len(detections) > 0:
-            # Convert detections to format [x, y, w, h]
-            dets = []
-            det_features = []
-            det_info = []
-            
-            for detection in detections:
-                x = detection['x']
-                y = detection['y']
-                w = detection['width']
-                h = detection['height']
-                dets.append([x, y, w, h])
-                
-                # Extract features
-                features = self.feature_extractor.extract(frame, [x, y, w, h])
-                det_features.append(features)
-                
-                # Store additional info
-                info = {}
-                for key in ['class', 'confidence', 'class_id']:
-                    if key in detection:
-                        info[key] = detection[key]
-                det_info.append(info)
-                
-            # Associate detections to trackers
-            matched, unmatched_dets, unmatched_trks = self._associate_detections_to_trackers(
-                dets, det_features, frame)
-                
-            # Update matched trackers with assigned detections
-            for det_idx, trk_idx in matched:
-                self.trackers[trk_idx]['bbox'] = dets[det_idx]
-                self.trackers[trk_idx]['time_since_update'] = 0
-                self.trackers[trk_idx]['hits'] += 1
-                self.trackers[trk_idx]['hit_streak'] += 1
-                
-                # Update features with moving average
-                alpha = 0.7  # Weight for new features
-                old_features = self.trackers[trk_idx]['features']
-                new_features = det_features[det_idx]
-                self.trackers[trk_idx]['features'] = alpha * new_features + (1 - alpha) * old_features
-                
-                # Update trail
-                x, y = int(dets[det_idx][0]), int(dets[det_idx][1])
-                self.trackers[trk_idx]['trail'].append((x, y))
-                if len(self.trackers[trk_idx]['trail']) > 30:  # Limit trail length
-                    self.trackers[trk_idx]['trail'] = self.trackers[trk_idx]['trail'][-30:]
-                    
-                # Update class info if confidence is higher
-                if ('confidence' in det_info[det_idx] and 
-                    ('confidence' not in self.trackers[trk_idx]['class_info'] or 
-                     det_info[det_idx]['confidence'] > self.trackers[trk_idx]['class_info']['confidence'])):
-                    self.trackers[trk_idx]['class_info'] = det_info[det_idx]
-                
-            # Create and initialize new trackers for unmatched detections
-            for det_idx in unmatched_dets:
-                tracker = {
-                    'id': len(self.trackers),
-                    'bbox': dets[det_idx],
-                    'features': det_features[det_idx],
-                    'class_info': det_info[det_idx],
-                    'time_since_update': 0,
-                    'hits': 1,
-                    'hit_streak': 1,
-                    'age': 0,
-                    'trail': [(int(dets[det_idx][0]), int(dets[det_idx][1]))]
-                }
-                
-                self.trackers.append(tracker)
-                
-        # Mark trackers for removal instead of removing while iterating
-        to_remove = []
-        ret = []
+        return self._update_trackers(frame, detections, det_boxes, det_features, det_info)
+    
+    def _iou(self, box1: Sequence[float], box2: Sequence[float]) -> float:
+        """
+        Calculate Intersection over Union (IoU) between two bounding boxes.
         
-        for i, tracker in enumerate(self.trackers):
-            if ((tracker['time_since_update'] < self.max_age) and 
-                (tracker['hit_streak'] >= self.min_hits or self.frame_count <= self.min_hits)):
+        Args:
+            box1: First box as [x_center, y_center, width, height]
+            box2: Second box as [x_center, y_center, width, height]
                 
-                x, y, w, h = tracker['bbox']
-                
-                track = {
-                    'id': tracker['id'],
-                    'x': x,
-                    'y': y,
-                    'width': w,
-                    'height': h,
-                    'trail': tracker['trail'].copy(),
-                    'age': tracker['age'],
-                    'hits': tracker['hits'],
-                    'time_since_update': tracker['time_since_update']
-                }
-                
-                # Add class info if available
-                if tracker['class_info']:
-                    for key, value in tracker['class_info'].items():
-                        track[key] = value
-                        
-                ret.append(track)
+        Returns:
+            float: IoU value between 0.0 and 1.0
+        """
+        # Convert from center coordinates to corner coordinates
+        def to_corners(box):
+            x, y, w, h = box
+            x1 = x - w / 2
+            y1 = y - h / 2
+            x2 = x + w / 2
+            y2 = y + h / 2
+            return x1, y1, x2, y2
             
-            # Mark dead tracks for removal
-            elif tracker['time_since_update'] > self.max_age:
-                to_remove.append(i)
+        # Get coordinates of intersection rectangle
+        box1_x1, box1_y1, box1_x2, box1_y2 = to_corners(box1)
+        box2_x1, box2_y1, box2_x2, box2_y2 = to_corners(box2)
         
-        # Remove dead tracks in reverse order to avoid index shifting
-        for i in sorted(to_remove, reverse=True):
-            if i < len(self.trackers):  # Safety check
-                self.trackers.pop(i)
-                
-        return ret
+        x_left = max(box1_x1, box2_x1)
+        y_top = max(box1_y1, box2_y1)
+        x_right = min(box1_x2, box2_x2)
+        y_bottom = min(box1_y2, box2_y2)
+        
+        # Calculate intersection area
+        if x_right < x_left or y_bottom < y_top:
+            return 0.0
+            
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+        
+        # Calculate union area
+        box1_area = (box1_x2 - box1_x1) * (box1_y2 - box1_y1)
+        box2_area = (box2_x2 - box2_x1) * (box2_y2 - box2_y1)
+        union_area = box1_area + box2_area - intersection_area
+        
+        # Avoid division by zero
+        if union_area == 0:
+            return 0.0
+            
+        return intersection_area / union_area
+        
+    def _associate_detections_to_trackers(
+        self, 
+        detections: List[List[float]], 
+        det_features: List[FeatureVector],
+        frame: Frame
+    ) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+        """
+        Associate detections to existing trackers using IoU and appearance features.
+        
+        Args:
+            detections: List of detections in format [x, y, w, h]
+            det_features: List of feature vectors for each detection
+            frame: Current video frame (unused, kept for compatibility)
+            
+        Returns:
+            Tuple containing:
+                - matches: List of (detection_idx, tracker_idx) pairs
+                - unmatched_detections: List of unmatched detection indices
+                - unmatched_trackers: List of unmatched tracker indices
+        """
+        if len(self.trackers) == 0:
+            return [], list(range(len(detections))), []
+            
+        if len(detections) == 0:
+            return [], [], list(range(len(self.trackers)))
+        
+        # Compute IoU matrix
+        iou_matrix = np.zeros((len(detections), len(self.trackers)), dtype=np.float32)
+        
+        for d, det in enumerate(detections):
+            for t, trk in enumerate(self.trackers):
+                iou_matrix[d, t] = self._iou(det, trk['bbox'])
+        
+        # Compute appearance similarity matrix
+        appearance_matrix = np.zeros((len(detections), len(self.trackers)), dtype=np.float32)
+        
+        for d, det_feat in enumerate(det_features):
+            for t, trk in enumerate(self.trackers):
+                # Compute cosine similarity between features
+                trk_feat = trk['features']
+                if len(trk_feat) > 0 and len(det_feat) > 0:
+                    # Normalize features
+                    trk_feat_norm = trk_feat / (np.linalg.norm(trk_feat) + 1e-6)
+                    det_feat_norm = det_feat / (np.linalg.norm(det_feat) + 1e-6)
+                    # Compute cosine similarity
+                    appearance_matrix[d, t] = float(np.dot(trk_feat_norm, det_feat_norm))
+        
+        # Combine IoU and appearance scores
+        combined_matrix = iou_matrix * 0.5 + appearance_matrix * 0.5
+        
+        # Apply linear assignment (Hungarian algorithm)
+        matched_indices = linear_sum_assignment(-combined_matrix)
+        matched_indices = np.column_stack(matched_indices)
+        
+        # Find unmatched detections and trackers
+        unmatched_detections = [d for d in range(len(detections)) 
+                              if d not in matched_indices[:, 0]]
+        
+        unmatched_trackers = [t for t in range(len(self.trackers)) 
+                            if t not in matched_indices[:, 1]]
+        
+        # Filter out matches with low score
+        matches = []
+        for m in matched_indices:
+            if combined_matrix[m[0], m[1]] >= self.iou_threshold:
+                matches.append(m.reshape(1, 2))
+            else:
+                unmatched_detections.append(m[0])
+                unmatched_trackers.append(m[1])
+        
+        if len(matches) == 0:
+            return [], unmatched_detections, unmatched_trackers
+            
+        matches = np.concatenate(matches, axis=0)
+        return matches.tolist(), unmatched_detections, unmatched_trackers
     
     def reset(self) -> None:
         """
@@ -540,124 +825,218 @@ def visualize(self, frame: Frame, tracks: Sequence[Track],
         except Exception as e:
             print(f"Error saving visualization to {output_path}: {e}")
             
-    return vis_frame
-    
-def get_tracker_info(self) -> Dict[str, Any]:
-    """
-    Get information about the tracker.
-    
-    Returns:
-        Dict[str, Any]: Dictionary containing tracker information with the following
-                      optional keys:
-                      {
-                          'name': str,  # tracker name
-                          'type': str,  # tracker type/algorithm
-                          'parameters': Dict[str, Any],  # tracker parameters
-                          'frame_count': int,  # number of frames processed
-                          'active_tracks': int,  # number of currently active tracks
-                          'total_tracks_created': int,  # total tracks created so far
-                          'total_tracks_lost': int,  # total tracks lost so far
-                          'total_fragmentations': int  # total track fragmentations
-                      }
-    """
-    active_tracks = len([t for t in self.trackers if t['time_since_update'] == 0])
-    total_created = max([t['id'] for t in self.trackers] + [0]) + 1
-    total_lost = len([t for t in self.trackers if t['time_since_update'] > 0])
+        return vis_frame
+
+    def get_tracker_info(self) -> TrackerInfo:
+        """
+        Get information about the tracker.
         
-    return {
-        'name': 'DeepSORT',
-        'type': 'appearance_based',
-        'parameters': {
-            'max_age': self.max_age,
-            'min_hits': self.min_hits,
-            'iou_threshold': self.iou_threshold,
-            'appearance_threshold': self.appearance_threshold
-        },
-        'frame_count': self.frame_count,
-        'active_tracks': active_tracks,
-        'total_tracks_created': total_created,
-        'total_tracks_lost': total_lost,
-        'total_fragmentations': 0  # Not implemented in this simple version
-    }
-    
-def _associate_detections_to_trackers(
-    self,
-    detections: List[List[float]],
-    det_features: List[FeatureVector],
-    frame: Frame
-) -> Tuple[np.ndarray, List[int], List[int]]:
-    """
-    Assign detections to tracked objects using both IoU and appearance features.
-    
-    Args:
-        detections: List of detections as [[x, y, width, height], ...]
-        det_features: List of detection feature vectors
-        frame: Current frame (unused, kept for compatibility)
+        Returns:
+            TrackerInfo: Dictionary containing tracker information with the following
+                          optional keys:
+                          {
+                              'name': str,  # tracker name
+                              'type': str,  # tracker type/algorithm
+                              'parameters': Dict[str, Any],  # tracker parameters
+                              'frame_count': int,  # number of frames processed
+                              'active_tracks': int,  # number of currently active tracks
+                              'total_tracks_created': int,  # total tracks created so far
+                              'total_tracks_lost': int,  # total tracks lost so far
+                              'total_fragmentations': int  # total track fragmentations
+                          }
+        """
+        active_tracks = len([t for t in self.trackers if t['time_since_update'] == 0])
+        total_created = max([t['id'] for t in self.trackers] + [0]) + 1
+        total_lost = len([t for t in self.trackers if t['time_since_update'] > 0])
             
-    Returns:
-        Tuple containing:
-            - matches: Array of matched indices (detection_idx, tracker_idx)
-            - unmatched_detections: List of unmatched detection indices
-            - unmatched_trackers: List of unmatched tracker indices
-    """
-    if len(self.trackers) == 0:
-        return np.empty((0, 2), dtype=int), list(range(len(detections))), []
+        return {
+            'name': 'DeepSORT',
+            'type': 'appearance_based',
+            'parameters': {
+                'max_age': self.max_age,
+                'min_hits': self.min_hits,
+                'iou_threshold': self.iou_threshold,
+                'appearance_threshold': self.appearance_threshold
+            },
+            'frame_count': self.frame_count,
+            'active_tracks': active_tracks,
+            'total_tracks_created': total_created,
+            'total_tracks_lost': total_lost,
+            'total_fragmentations': 0  # Not implemented in this simple version
+        }
+
+    def _update_trackers(
+        self,
+        frame: Frame,
+        detections: List[Dict[str, Any]],
+        det_boxes: Optional[List[BBox]] = None,
+        det_features: Optional[List[FeatureVector]] = None,
+        det_info: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Update trackers with new detections.
+        
+        Args:
+            frame: Current video frame
+            detections: List of detection dictionaries
+            det_boxes: List of detection bounding boxes as [x, y, w, h]
+            det_features: List of feature vectors for each detection
+            det_info: List of additional detection info (class, confidence, etc.)
             
-    if len(detections) == 0:
-        return np.empty((0, 2), dtype=int), [], list(range(len(self.trackers)))
+        Returns:
+            List of active tracks with updated states
+        """
+        # If no detections, just update existing trackers
+        if not detections:
+            # Update all trackers and mark those that haven't been seen in a while
+            ret = []
+            to_remove = []
+            
+            for i, tracker in enumerate(self.trackers):
+                tracker['time_since_update'] += 1
+                tracker['age'] += 1
+                
+                # Remove dead trackers
+                if tracker['time_since_update'] > self.max_age:
+                    to_remove.append(i)
+                    continue
+                    
+                # Only return tracks that have been confirmed
+                if tracker['hits'] >= self.min_hits or self.frame_count <= self.min_hits:
+                    x, y, w, h = tracker['bbox']
+                    track = {
+                        'id': tracker['id'],
+                        'x': x,
+                        'y': y,
+                        'width': w,
+                        'height': h,
+                        'trail': tracker['trail'].copy(),
+                        'age': tracker['age'],
+                        'hits': tracker['hits'],
+                        'time_since_update': tracker['time_since_update']
+                    }
+                    
+                    # Add class info if available
+                    if tracker['class_info']:
+                        for key, value in tracker['class_info'].items():
+                            track[key] = value
+                            
+                    ret.append(track)
+            
+            # Remove dead tracks in reverse order to avoid index shifting
+            for i in sorted(to_remove, reverse=True):
+                if i < len(self.trackers):
+                    self.trackers.pop(i)
+                    
+            return ret
+            
+        # Process new detections
+        if detections and len(detections) > 0:
+            # Convert detections to format [x, y, w, h]
+            dets = []
+            det_features = []
+            det_info = []
+            
+            for detection in detections:
+                x = detection['x']
+                y = detection['y']
+                w = detection['width']
+                h = detection['height']
+                dets.append([x, y, w, h])
+                
+                # Extract features
+                features = self.feature_extractor.extract(frame, [x, y, w, h])
+                det_features.append(features)
+                
+                # Store additional info
+                info = {}
+                for key in ['class', 'confidence', 'class_id']:
+                    if key in detection:
+                        info[key] = detection[key]
+                det_info.append(info)
+                
+            # Associate detections to trackers
+            matched, unmatched_dets, unmatched_trks = self._associate_detections_to_trackers(
+                dets, det_features, frame)
+                
+            # Update matched trackers with assigned detections
+            for det_idx, trk_idx in matched:
+                self.trackers[trk_idx]['bbox'] = tuple(dets[det_idx])
+                    
+                # Update class info if confidence is higher
+                if ('confidence' in det_info[det_idx] and 
+                    ('confidence' not in self.trackers[trk_idx]['class_info'] or 
+                     det_info[det_idx]['confidence'] > self.trackers[trk_idx]['class_info'].get('confidence', 0))):
+                    self.trackers[trk_idx]['class_info'] = det_info[det_idx]
+                
+            # Create and initialize new trackers for unmatched detections
+            for det_idx in unmatched_dets:
+                tracker = {
+                    'id': self.next_id,
+                    'bbox': dets[det_idx],
+                    'features': det_features[det_idx],
+                    'class_info': det_info[det_idx].copy() if det_info[det_idx] else {},
+                    'time_since_update': 0,
+                    'hits': 1,
+                    'hit_streak': 1,
+                    'age': 0,
+                    'trail': [(int(dets[det_idx][0]), int(dets[det_idx][1]))]
+                }
+                
+                self.trackers.append(tracker)
+                self.next_id += 1
         
-    # Compute IoU matrix
-    iou_matrix = np.zeros((len(detections), len(self.trackers)), dtype=np.float32)
+        # Update all trackers and prepare return value
+        ret = []
+        to_remove = []
         
-    for d, det in enumerate(detections):
-        for t, trk in enumerate(self.trackers):
-            iou_matrix[d, t] = self._iou(det, list(trk['bbox']))
+        for i, tracker in enumerate(self.trackers):
+            tracker['age'] += 1
+            
+            if tracker['time_since_update'] > 0:
+                tracker['hit_streak'] = 0
+                
+            tracker['time_since_update'] += 1
+            
+            # Remove dead trackers
+            if tracker['time_since_update'] > self.max_age:
+                to_remove.append(i)
+                continue
+                
+            # Only return tracks that have been updated recently enough
+            if tracker['hit_streak'] >= self.min_hits or self.frame_count <= self.min_hits:
+                x, y, w, h = tracker['bbox']
+                
+                track = {
+                    'id': tracker['id'],
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'trail': tracker['trail'].copy(),
+                    'age': tracker['age'],
+                    'hits': tracker['hits'],
+                    'time_since_update': tracker['time_since_update']
+                }
+                
+                # Add class info if available
+                if tracker['class_info']:
+                    for key, value in tracker['class_info'].items():
+                        track[key] = value
+                        
+                ret.append(track)
         
-    # Compute appearance similarity matrix
-    appearance_matrix = np.zeros((len(detections), len(self.trackers)), dtype=np.float32)
-        
-    for d, det_feat in enumerate(det_features):
-        for t, trk in enumerate(self.trackers):
-            # Compute cosine similarity between features
-            trk_feat = trk['features']
-            if len(trk_feat) > 0 and len(det_feat) > 0:
-                # Normalize features
-                trk_feat_norm = trk_feat / (np.linalg.norm(trk_feat) + 1e-6)
-                det_feat_norm = det_feat / (np.linalg.norm(det_feat) + 1e-6)
-                # Compute cosine similarity
-                appearance_matrix[d, t] = float(np.dot(trk_feat_norm, det_feat_norm))
-        
-    # Combine IoU and appearance scores
-    combined_matrix = iou_matrix * 0.5 + appearance_matrix * 0.5
-        
-    # Apply linear assignment (Hungarian algorithm)
-    matched_indices = linear_sum_assignment(-combined_matrix)
-    matched_indices = np.column_stack(matched_indices)
-        
-    # Find unmatched detections and trackers
-    unmatched_detections = [d for d in range(len(detections)) 
-                          if d not in matched_indices[:, 0]]
-        
-    unmatched_trackers = [t for t in range(len(self.trackers)) 
-                        if t not in matched_indices[:, 1]]
-        
-    # Filter out matches with low score
-    matches = []
-    for m in matched_indices:
-        if combined_matrix[m[0], m[1]] >= self.iou_threshold:
-            matches.append(m.reshape(1, 2))
-        else:
-            unmatched_detections.append(m[0])
-            unmatched_trackers.append(m[1])
-        
-    if matches:
-        matches = np.concatenate(matches, axis=0)
-    else:
+        # Remove dead tracks in reverse order to avoid index shifting
+        for i in sorted(to_remove, reverse=True):
+            if i < len(self.trackers):
+                self.trackers.pop(i)
+                
+        return ret
         matches = np.empty((0, 2), dtype=int)
         
     return matches, unmatched_detections, unmatched_trackers
     
-def _iou(self, box1: List[float], box2: List[float]) -> float:
+def _iou(self, box1: Sequence[float], box2: Sequence[float]) -> float:
     """
     Calculate Intersection over Union (IoU) between two bounding boxes.
     

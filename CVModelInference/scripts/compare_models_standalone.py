@@ -119,7 +119,7 @@ def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
     predictions = results.get('predictions', [])
     
     # Count objects by class
-    class_counts = {}
+    class_counts: dict[str, int] = {}
     for pred in predictions:
         cls = pred['class']
         class_counts[cls] = class_counts.get(cls, 0) + 1
@@ -190,7 +190,7 @@ def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
 
 def process_images(model1, model2, input_dir: str, output_dir: str,
                   model1_name: str, model2_name: str, confidence: float = 0.5,
-                  image_extensions: List[str] = None) -> Dict:
+                  image_extensions: List[str] | None = None) -> Dict:
     """
     Process all images in a directory with two models and generate comparison images.
     
@@ -218,7 +218,7 @@ def process_images(model1, model2, input_dir: str, output_dir: str,
     
     if not image_files:
         print(f"No image files found in {input_dir}")
-        return
+        return {}
     
     print(f"Found {len(image_files)} images to process")
     

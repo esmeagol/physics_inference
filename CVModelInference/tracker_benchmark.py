@@ -22,7 +22,7 @@ class TrackerBenchmark:
     Class for benchmarking and comparing different tracking algorithms.
     """
     
-    def __init__(self, detection_model: InferenceRunner = None):
+    def __init__(self, detection_model: InferenceRunner | None = None):
         """
         Initialize the tracker benchmark.
         
@@ -30,8 +30,8 @@ class TrackerBenchmark:
             detection_model: Optional detection model for generating detections
         """
         self.detection_model = detection_model
-        self.trackers = {}
-        self.results = {}
+        self.trackers: dict[str, Any] = {}
+        self.results: dict[str, Any] = {}
         
     def add_tracker(self, name: str, tracker: Tracker) -> None:
         """
@@ -418,7 +418,7 @@ class TrackerBenchmark:
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         # Create video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter.fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
         
         # Get tracker results
@@ -466,7 +466,7 @@ class SnookerTrackerBenchmark(TrackerBenchmark):
     Specialized tracker benchmark for snooker videos with snooker-specific metrics.
     """
     
-    def __init__(self, detection_model: InferenceRunner = None):
+    def __init__(self, detection_model: InferenceRunner | None = None):
         """
         Initialize the snooker tracker benchmark.
         

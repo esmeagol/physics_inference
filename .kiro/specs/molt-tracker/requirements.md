@@ -14,8 +14,10 @@ This feature implements the MOLT (Multiple Object Local Tracker) algorithm for r
 
 1. WHEN the tracker is initialized with initial object detections THEN the system SHALL create a population of local trackers for each detected object
 2. WHEN each local tracker is created THEN the system SHALL store its position, size, and reference appearance histogram
-3. WHEN the population size is configured THEN the system SHALL support 100-2000 trackers per object
-4. WHEN objects are detected in the initial frames THEN the system SHALL use object detection inference for the first 5-6 frames to establish initial positions
+3. WHEN the population size is configured THEN the system SHALL support 100-2000 trackers per object with different sizes based on object type
+4. WHEN the white ball is detected THEN the system SHALL use a larger tracker population (e.g., 1500-2000 trackers) due to its higher speed and movement frequency
+5. WHEN colored balls are detected THEN the system SHALL use a smaller tracker population (e.g., 100-500 trackers) as they move less frequently
+6. WHEN objects are detected in the initial frames THEN the system SHALL use object detection inference for the first 5-6 frames to establish initial positions
 
 ### Requirement 2
 
@@ -39,6 +41,7 @@ This feature implements the MOLT (Multiple Object Local Tracker) algorithm for r
 2. WHEN population diversity is maintained THEN the system SHALL distribute new trackers with 50% near the best tracker, 30% near the second best, and 20% near the third best
 3. WHEN exploration radius is applied THEN the system SHALL scatter new trackers within a configurable radius around selected positions
 4. WHEN population size is maintained THEN the system SHALL keep the same number of trackers per object across frames
+5. WHEN object-specific parameters are applied THEN the system SHALL use different exploration radii based on object type (larger for white ball, smaller for colored balls)
 
 ### Requirement 4
 
@@ -90,6 +93,19 @@ This feature implements the MOLT (Multiple Object Local Tracker) algorithm for r
 
 ### Requirement 8
 
+**User Story:** As a computer vision developer, I want the MOLT tracker to maintain ball count verification, so that it can detect when balls are lost or misidentified and handle snooker-specific ball counting rules.
+
+#### Acceptance Criteria
+
+1. WHEN the tracker is initialized THEN the system SHALL accept expected ball counts for each color (5-15 red balls, 1 each for other colors)
+2. WHEN tracking is performed THEN the system SHALL continuously monitor the number of tracked balls per color
+3. WHEN a ball is lost THEN the system SHALL attempt to reassign tracking to the same ball type rather than creating new tracks
+4. WHEN ball counts exceed expected numbers THEN the system SHALL merge or reassign tracks to maintain correct counts
+5. WHEN ball counts fall below expected numbers THEN the system SHALL flag potential tracking losses and attempt recovery
+6. WHEN colored balls (non-red) are tracked THEN the system SHALL enforce that only one ball of each color can exist simultaneously
+
+### Requirement 9
+
 **User Story:** As a computer vision developer, I want the MOLT tracker to provide comprehensive tracking results, so that I can analyze object trajectories and tracking performance.
 
 #### Acceptance Criteria
@@ -99,3 +115,4 @@ This feature implements the MOLT (Multiple Object Local Tracker) algorithm for r
 3. WHEN tracking confidence is calculated THEN the system SHALL provide confidence scores based on tracker weights
 4. WHEN trajectory information is available THEN the system SHALL maintain object trails for visualization
 5. WHEN tracking statistics are computed THEN the system SHALL provide metrics on tracker population performance
+6. WHEN ball count information is provided THEN the system SHALL include current and expected ball counts in tracking results

@@ -8,7 +8,7 @@ import os
 import argparse
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -41,7 +41,7 @@ def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou
     return model1, model2
 
 
-def process_frame(model, frame: np.ndarray, confidence: float = 0.5) -> Dict:
+def process_frame(model, frame: np.ndarray, confidence: float = 0.5) -> Dict[Any, Any]:
     """
     Process a single frame with the given model.
     
@@ -53,7 +53,8 @@ def process_frame(model, frame: np.ndarray, confidence: float = 0.5) -> Dict:
     Returns:
         Dictionary containing detection results
     """
-    return model.predict(frame, confidence=confidence)
+    result = model.predict(frame, confidence=confidence)
+    return dict(result) if result else {}
 
 
 def create_side_by_side_frame(frame: np.ndarray, results1: Dict, results2: Dict, 
@@ -105,7 +106,7 @@ def draw_detections(frame: np.ndarray, results: Dict, model_name: str) -> None:
     predictions = results.get('predictions', [])
     
     # Count objects by class
-    class_counts = {}
+    class_counts: dict[str, int] = {}
     for pred in predictions:
         cls = pred['class']
         class_counts[cls] = class_counts.get(cls, 0) + 1
@@ -190,7 +191,7 @@ def process_video(model1, model2, video_path: str, output_path: str,
         end_frame = start_frame + int(duration * fps)
     
     # Create output video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width * 2, height))
     
     # Get model names for display
@@ -202,7 +203,7 @@ def process_video(model1, model2, video_path: str, output_path: str,
     processed_count = 0
     
     # Initialize FPS tracking
-    fps_delay = 0
+    fps_delay = 0.0
     if fps_limit:
         fps_delay = 1.0 / fps_limit
     

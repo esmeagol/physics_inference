@@ -34,7 +34,7 @@ def detect_green_table(
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
     # Create a mask for green color range
-    mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
+    mask = cv2.inRange(hsv, np.array(hsv_lower), np.array(hsv_upper))
     
     # Apply morphological operations to clean up the mask
     kernel = np.ones((3, 3), np.uint8)  # Smaller kernel for finer details
@@ -103,7 +103,7 @@ def detect_green_table(
             # Get the minimum area rectangle
             rect = cv2.minAreaRect(largest_contour)
             box = cv2.boxPoints(rect)
-            box = np.intp(box)  # Use intp instead of int0 for newer NumPy versions
+            box = np.array(box, dtype=np.int32)  # Convert to integer coordinates
             return order_points(box.reshape(4, 2))
         except Exception as e:
             # Fall back to convex hull approximation

@@ -30,7 +30,7 @@ class RoboflowLocal(InferenceRunner):
                 server_url: str = "http://localhost:9001",
                 confidence: float = 0.5,
                 overlap: float = 0.5,
-                **kwargs):
+                **kwargs: Any) -> None:
         """
         Initialize the Roboflow local inference runner.
         
@@ -65,7 +65,7 @@ class RoboflowLocal(InferenceRunner):
     
     def predict(self,
                image: Union[str, np.ndarray],
-               **kwargs) -> Dict:
+               **kwargs: Any) -> Dict[str, Any]:
         """
         Run inference on an image.
         
@@ -78,6 +78,7 @@ class RoboflowLocal(InferenceRunner):
             Dictionary containing the prediction results
         """
         # Handle numpy array input
+        file_handle = None
         if isinstance(image, np.ndarray):
             # Convert numpy array to bytes
             _, img_encoded = cv2.imencode('.jpg', image)
@@ -85,7 +86,9 @@ class RoboflowLocal(InferenceRunner):
             files = {'file': ('image.jpg', image_data, 'image/jpeg')}
         # Handle file path input
         elif os.path.isfile(image):
-            files = {'file': open(image, 'rb')}
+            with open(image, 'rb') as file_handle:
+                file_data = file_handle.read()
+            files = {'file': ('image.jpg', file_data, 'image/jpeg')}
         else:
             raise ValueError("Input must be a valid file path or numpy array")
         
@@ -107,18 +110,19 @@ class RoboflowLocal(InferenceRunner):
             response.raise_for_status()
             
             # Parse and return the JSON response
-            return response.json()
+            result = response.json()
+            return result if isinstance(result, dict) else {}
             
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Error making prediction request: {str(e)}")
         finally:
             # Close the file if we opened it
-            if isinstance(image, str) and 'files' in locals():
-                files['file'].close()
+            if file_handle is not None:
+                file_handle.close()
     
     def predict_batch(self,
                      images: List[Union[str, np.ndarray]],
-                     **kwargs) -> List[Dict]:
+                     **kwargs: Any) -> List[Dict[str, Any]]:
         """
         Run inference on a batch of images.
         
@@ -133,7 +137,7 @@ class RoboflowLocal(InferenceRunner):
     
     def visualize_predictions(self,
                              image: Union[str, np.ndarray],
-                             predictions: Dict,
+                             predictions: Dict[str, Any],
                              output_path: Optional[str] = None) -> np.ndarray:
         """
         Visualize the predictions on the input image.

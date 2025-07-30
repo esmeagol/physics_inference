@@ -22,11 +22,7 @@ except ImportError:
     sys.exit(1)
 
 # Import utility functions from the correct module path
-try:
-    from rfdetr.util.misc import nested_tensor_from_tensor_list
-except ImportError:
-    # Try alternative import path if the above fails
-    from rfdetr.models.util.misc import nested_tensor_from_tensor_list
+from rfdetr.util.misc import nested_tensor_from_tensor_list
 
 def export_rfdetr_nano(model_path, output_dir):
     """

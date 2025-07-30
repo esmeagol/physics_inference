@@ -25,7 +25,7 @@ class LocalPT(InferenceRunner):
                 model_path: str,
                 confidence: float = 0.5,
                 iou: float = 0.5,
-                **kwargs):
+                **kwargs: Any) -> None:
         """
         Initialize the local PyTorch inference runner.
         
@@ -54,7 +54,7 @@ class LocalPT(InferenceRunner):
         
     def predict(self, 
                image: Union[str, np.ndarray], 
-               **kwargs) -> Dict:
+               **kwargs: Any) -> Dict[str, Any]:
         """
         Run inference on a single image.
         
@@ -81,7 +81,7 @@ class LocalPT(InferenceRunner):
     
     def predict_batch(self, 
                      images: List[Union[str, np.ndarray]],
-                     **kwargs) -> List[Dict]:
+                     **kwargs: Any) -> List[Dict[str, Any]]:
         """
         Run inference on a batch of images.
         
@@ -162,7 +162,7 @@ class LocalPT(InferenceRunner):
             'iou': self.iou
         }
     
-    def _convert_to_standard_format(self, result) -> Dict:
+    def _convert_to_standard_format(self, result: Any) -> Dict[str, Any]:
         """
         Convert Ultralytics result to standardized format.
         

@@ -19,7 +19,7 @@ class InferenceRunner(ABC):
     """
     
     @abstractmethod
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """
         Initialize the inference runner.
         
@@ -31,7 +31,7 @@ class InferenceRunner(ABC):
     @abstractmethod
     def predict(self, 
                 image: Union[str, np.ndarray], 
-                **kwargs) -> Dict:
+                **kwargs: Any) -> Dict[str, Any]:
         """
         Run inference on a single image.
         
@@ -47,7 +47,7 @@ class InferenceRunner(ABC):
     @abstractmethod
     def predict_batch(self, 
                      images: List[Union[str, np.ndarray]],
-                     **kwargs) -> List[Dict]:
+                     **kwargs: Any) -> List[Dict[str, Any]]:
         """
         Run inference on a batch of images.
         

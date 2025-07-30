@@ -8,7 +8,7 @@ import os
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -53,7 +53,7 @@ def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str,
     
     return model1, model2
 
-def process_image(model, image_path: str, confidence: float = 0.5, overlap: int = 30) -> dict:
+def process_image(model, image_path: str, confidence: float = 0.5, overlap: int = 30) -> dict[Any, Any]:
     """
     Process a single image with the given model.
     
@@ -66,7 +66,8 @@ def process_image(model, image_path: str, confidence: float = 0.5, overlap: int 
     Returns:
         Dictionary containing detection results
     """
-    return model.predict(image_path, confidence=confidence, overlap=overlap)
+    result = model.predict(image_path, confidence=confidence, overlap=overlap)
+    return dict(result) if result else {}
 
 def process_image_pair(model1, model2, image_path: str, output_dir: str, confidence: float = 0.5):
     """
@@ -105,7 +106,7 @@ def save_text_results(results1: dict, results2: dict, filename: str, output_dir:
         predictions = results.get('predictions', [])
         
         # Count objects by class
-        class_counts = {}
+        class_counts: dict[str, int] = {}
         for pred in predictions:
             cls = pred['class']
             class_counts[cls] = class_counts.get(cls, 0) + 1
@@ -186,7 +187,7 @@ def draw_detections(img: np.ndarray, results: dict, offset: Tuple[int, int],
     
     # Draw each detection
     predictions = results.get('predictions', [])
-    class_counts = {}
+    class_counts: dict[str, int] = {}
     
     for pred in predictions:
         cls = pred['class']
@@ -228,7 +229,7 @@ def draw_detections(img: np.ndarray, results: dict, offset: Tuple[int, int],
     return img
 
 def process_directory(model1, model2, input_dir: str, output_dir: str, 
-                     confidence: float = 0.5, limit: int = None):
+                     confidence: float = 0.5, limit: int | None = None) -> None:
     """Process all images in a directory."""
     # Get all image files
     image_extensions = {'.jpg', '.jpeg', '.png'}
