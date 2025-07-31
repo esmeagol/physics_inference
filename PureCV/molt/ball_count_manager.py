@@ -22,14 +22,45 @@ class BallCountManager:
     
     def __init__(self, expected_counts: Dict[str, int]) -> None:
         """
-        Initialize the BallCountManager with expected ball counts.
+        Initialize the BallCountManager with expected ball counts for the game.
+        
+        The BallCountManager is responsible for monitoring the number of tracked
+        balls of each type and ensuring they match the expected counts for the
+        specific game being played (snooker, pool, etc.). It detects violations
+        and provides suggestions for resolving count discrepancies.
         
         Args:
-            expected_counts: Dictionary mapping ball colors to expected counts
-                           e.g., {'red': 15, 'white': 1, 'yellow': 1, ...}
+            expected_counts (Dict[str, int]): Dictionary mapping ball colors/types
+                to their expected counts. Keys should be ball color names (e.g.,
+                'red', 'white', 'yellow') and values should be non-negative integers
+                representing the expected number of balls of that type.
+                
+                Examples:
+                - Snooker: {'white': 1, 'red': 15, 'yellow': 1, 'green': 1, ...}
+                - 8-ball pool: {'white': 1, 'yellow': 7, 'red': 7, 'black': 1}
+                - 9-ball pool: {'white': 1, 'yellow': 9}
         
         Raises:
-            ValueError: If expected_counts is invalid
+            ValueError: If expected_counts is empty, contains invalid ball class
+                names (non-string or empty), or invalid counts (negative integers).
+                
+        Example:
+            >>> # Snooker ball count manager
+            >>> snooker_counts = {
+            ...     'white': 1, 'red': 15, 'yellow': 1, 'green': 1,
+            ...     'brown': 1, 'blue': 1, 'pink': 1, 'black': 1
+            ... }
+            >>> manager = BallCountManager(snooker_counts)
+            
+            >>> # Pool ball count manager
+            >>> pool_counts = {'white': 1, 'yellow': 7, 'red': 7, 'black': 1}
+            >>> manager = BallCountManager(pool_counts)
+        
+        Initialization Effects:
+            - Sets up expected counts for all ball types
+            - Initializes current counts to zero for all ball types
+            - Clears track assignment mappings
+            - Resets all violation statistics and history
         """
         if not expected_counts:
             raise ValueError("Expected counts cannot be empty")
@@ -93,10 +124,53 @@ class BallCountManager:
     
     def verify_counts(self) -> bool:
         """
-        Check if current counts match expected counts.
+        Verify that current ball counts match expected counts for all ball types.
+        
+        This method performs a comprehensive check of all ball counts, comparing
+        the current number of tracked balls against the expected counts. It
+        identifies violations (over-count or under-count) and records them for
+        analysis and potential corrective action.
+        
+        The verification process:
+        1. Compares current vs. expected counts for each ball type
+        2. Identifies violations (over-count or under-count scenarios)
+        3. Records violation details in the violation history
+        4. Updates violation statistics
+        5. Returns overall validity status
         
         Returns:
-            bool: True if all counts are within expected ranges, False otherwise
+            bool: True if all ball counts match expected values exactly,
+                False if any violations are detected.
+                
+        Side Effects:
+            - Updates violation_history with any detected violations
+            - Increments total_count_violations counter if violations found
+            - Maintains rolling history of recent violations (last 100)
+            
+        Example:
+            >>> # Update counts from current tracking results
+            >>> manager.update_counts_from_tracks(current_tracks)
+            >>> 
+            >>> # Verify counts
+            >>> if manager.verify_counts():
+            ...     print("All ball counts are correct")
+            ... else:
+            ...     print("Ball count violations detected")
+            ...     violations = manager.get_count_violations()
+            ...     for ball_type, info in violations.items():
+            ...         if info['violation_type'] != 'none':
+            ...             print(f"  {ball_type}: {info['violation_type']}")
+        
+        Use Cases:
+            - Continuous monitoring during tracking
+            - Quality assurance for tracking accuracy
+            - Triggering corrective actions (track merging, recovery)
+            - Performance evaluation and debugging
+        
+        Note:
+            - Should be called after update_counts_from_tracks()
+            - Violations are automatically logged with timestamps
+            - Use get_count_violations() for detailed violation information
         """
         violations_found = False
         

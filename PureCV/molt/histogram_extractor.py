@@ -23,14 +23,41 @@ class HistogramExtractor:
     
     def __init__(self, num_bins: int = 16, color_space: str = 'HSV') -> None:
         """
-        Initialize the histogram extractor.
+        Initialize the histogram extractor with specified parameters.
+        
+        The histogram extractor is responsible for computing color histograms from
+        image patches and comparing them using various distance metrics. It supports
+        multiple color spaces and configurable histogram resolutions.
         
         Args:
-            num_bins: Number of bins for histogram computation
-            color_space: Color space for histogram extraction ('HSV' or 'RGB')
-            
+            num_bins (int, optional): Number of bins for histogram computation.
+                More bins provide finer color discrimination but slower computation.
+                Typical range: 8-32 bins. Default: 16.
+            color_space (str, optional): Color space for histogram extraction.
+                Supported options:
+                - 'HSV': Hue-Saturation-Value (default, good for color-based tracking)
+                - 'RGB': Red-Green-Blue (faster conversion from BGR)
+                - 'LAB': L*a*b* (perceptually uniform color space)
+                Default: 'HSV'.
+                
         Raises:
-            ValueError: If parameters are invalid
+            ValueError: If num_bins is not positive or color_space is not supported.
+            
+        Example:
+            >>> # Default HSV extractor with 16 bins
+            >>> extractor = HistogramExtractor()
+            
+            >>> # Custom RGB extractor with 24 bins
+            >>> extractor = HistogramExtractor(num_bins=24, color_space='RGB')
+            
+            >>> # LAB extractor for perceptually uniform color matching
+            >>> extractor = HistogramExtractor(num_bins=20, color_space='LAB')
+        
+        Note:
+            - HSV is recommended for color-based object tracking
+            - RGB provides fastest color space conversion
+            - LAB offers perceptually uniform color differences
+            - Higher bin counts increase memory usage and computation time
         """
         if num_bins <= 0:
             raise ValueError(f"Number of bins must be positive, got {num_bins}")
@@ -60,16 +87,47 @@ class HistogramExtractor:
     
     def extract_histogram(self, patch: NDArray[np.uint8]) -> Histogram:
         """
-        Extract color histogram from an image patch.
+        Extract a normalized color histogram from an image patch.
+        
+        This method computes a 3D color histogram from the input image patch,
+        converts it to the specified color space, and returns a normalized
+        1D histogram suitable for similarity comparison.
+        
+        The extraction process:
+        1. Validates the input patch dimensions and format
+        2. Converts from BGR to the specified color space
+        3. Computes a 3D histogram using all color channels
+        4. Normalizes the histogram to unit sum
+        5. Flattens to 1D array for efficient storage and comparison
         
         Args:
-            patch: Image patch as numpy array with shape (H, W, C) in BGR format
-            
+            patch (numpy.ndarray): Image patch as numpy array with shape (H, W, C) 
+                in BGR format (OpenCV standard). Must be a valid 3-channel color image
+                with at least 5x5 pixels for reliable histogram computation.
+                
         Returns:
-            Histogram: Normalized color histogram as 1D array
-            
+            numpy.ndarray: Normalized color histogram as 1D float32 array.
+                Length equals num_bins^3 (e.g., 4096 for 16 bins per channel).
+                Values sum to 1.0 and represent color distribution probabilities.
+                
         Raises:
-            ValueError: If patch is invalid or empty
+            ValueError: If patch is None, empty, or not a 3-channel color image.
+            
+        Example:
+            >>> # Extract histogram from object patch
+            >>> patch = frame[y1:y2, x1:x2]  # Extract patch from frame
+            >>> histogram = extractor.extract_histogram(patch)
+            >>> print(f"Histogram shape: {histogram.shape}")
+            >>> print(f"Histogram sum: {histogram.sum():.3f}")  # Should be ~1.0
+            
+            >>> # Compare with reference histogram
+            >>> similarity = extractor.compare_histograms(histogram, reference_hist)
+        
+        Performance Notes:
+            - Computation time scales with patch size and number of bins
+            - Larger patches provide more stable histograms
+            - Smaller patches are faster but may be less discriminative
+            - HSV conversion is slightly slower than RGB but more robust
         """
         if patch is None or patch.size == 0:
             raise ValueError("Patch cannot be None or empty")
@@ -133,16 +191,50 @@ class HistogramExtractor:
         """
         Compare two histograms using the specified distance metric.
         
+        This method computes the distance between two color histograms using
+        one of several statistical distance measures. Lower distances indicate
+        higher similarity between the histograms.
+        
+        Supported distance metrics:
+        - 'bhattacharyya': Bhattacharyya distance (default, robust statistical measure)
+        - 'intersection': Histogram intersection distance (fast and intuitive)
+        - 'chi_square': Chi-square distance (good for normalized histograms)
+        
         Args:
-            hist1: First histogram as 1D numpy array
-            hist2: Second histogram as 1D numpy array
-            method: Distance metric ('bhattacharyya', 'intersection', 'chi_square')
-            
+            hist1 (numpy.ndarray): First histogram as normalized 1D float32 array.
+                Must be the output of extract_histogram() or similarly normalized.
+            hist2 (numpy.ndarray): Second histogram as normalized 1D float32 array.
+                Must have the same shape as hist1.
+            method (str, optional): Distance metric to use. Must be one of:
+                'bhattacharyya', 'intersection', 'chi_square'. Default: 'bhattacharyya'.
+                
         Returns:
-            float: Distance between histograms (lower values indicate higher similarity)
-            
+            float: Distance between histograms. Range depends on method:
+                - Bhattacharyya: [0, ∞) where 0 = identical
+                - Intersection: [0, 1] where 0 = identical  
+                - Chi-square: [0, ∞) where 0 = identical
+                
         Raises:
-            ValueError: If histograms have different shapes or invalid method
+            ValueError: If histograms have different shapes, are None, or method is invalid.
+            
+        Example:
+            >>> # Compare object histogram with reference
+            >>> current_hist = extractor.extract_histogram(current_patch)
+            >>> reference_hist = extractor.extract_histogram(reference_patch)
+            >>> 
+            >>> # Using different distance metrics
+            >>> bhatt_dist = extractor.compare_histograms(current_hist, reference_hist, 'bhattacharyya')
+            >>> intersect_dist = extractor.compare_histograms(current_hist, reference_hist, 'intersection')
+            >>> chi2_dist = extractor.compare_histograms(current_hist, reference_hist, 'chi_square')
+            >>> 
+            >>> print(f"Bhattacharyya distance: {bhatt_dist:.3f}")
+            >>> print(f"Intersection distance: {intersect_dist:.3f}")
+            >>> print(f"Chi-square distance: {chi2_dist:.3f}")
+        
+        Method Characteristics:
+            - **Bhattacharyya**: Most robust, handles noise well, computationally moderate
+            - **Intersection**: Fastest computation, intuitive interpretation, less robust
+            - **Chi-square**: Good statistical properties, sensitive to small differences
         """
         if hist1 is None or hist2 is None:
             raise ValueError("Histograms cannot be None")
@@ -167,17 +259,58 @@ class HistogramExtractor:
     
     def normalize_similarity(self, distance: float, method: str = DEFAULT_HISTOGRAM_METHOD) -> float:
         """
-        Map distance to similarity score in [0,1] range.
+        Convert histogram distance to similarity score in [0,1] range.
+        
+        This method transforms distance values from compare_histograms() into
+        similarity scores where 1.0 indicates identical histograms and 0.0
+        indicates completely different histograms. This normalization enables
+        consistent similarity interpretation across different distance metrics.
+        
+        Normalization formulas:
+        - Bhattacharyya: similarity = exp(-distance)
+        - Intersection: similarity = 1 - distance  
+        - Chi-square: similarity = exp(-distance/2)
         
         Args:
-            distance: Distance value from compare_histograms
-            method: Distance metric used ('bhattacharyya', 'intersection', 'chi_square')
-            
+            distance (float): Distance value returned by compare_histograms().
+                Must be non-negative and within the valid range for the method.
+            method (str, optional): Distance metric that was used to compute the distance.
+                Must match the method used in compare_histograms(). 
+                Default: 'bhattacharyya'.
+                
         Returns:
-            float: Similarity score where 1.0 = identical, 0.0 = completely different
-            
+            float: Similarity score in [0, 1] range where:
+                - 1.0 = histograms are identical
+                - 0.0 = histograms are completely different
+                - Values closer to 1.0 indicate higher similarity
+                
         Raises:
-            ValueError: If method is unsupported
+            ValueError: If method is not supported or distance is invalid.
+            
+        Example:
+            >>> # Complete similarity computation workflow
+            >>> hist1 = extractor.extract_histogram(patch1)
+            >>> hist2 = extractor.extract_histogram(patch2)
+            >>> 
+            >>> # Compute distance and convert to similarity
+            >>> distance = extractor.compare_histograms(hist1, hist2, 'bhattacharyya')
+            >>> similarity = extractor.normalize_similarity(distance, 'bhattacharyya')
+            >>> 
+            >>> print(f"Distance: {distance:.3f}")
+            >>> print(f"Similarity: {similarity:.3f}")
+            >>> 
+            >>> if similarity > 0.8:
+            ...     print("High similarity - likely same object")
+            >>> elif similarity > 0.5:
+            ...     print("Moderate similarity - possibly same object")
+            >>> else:
+            ...     print("Low similarity - likely different objects")
+        
+        Use Cases:
+            - Converting distances for tracker weight computation
+            - Thresholding for object matching decisions
+            - Combining with spatial similarities in tracking algorithms
+            - Providing intuitive similarity scores for visualization
         """
         method = method.lower()
         

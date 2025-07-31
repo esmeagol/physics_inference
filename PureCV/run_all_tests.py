@@ -58,12 +58,22 @@ def main():
     
     # List of all tests to run
     tests = [
+        # Core component tests
         ("PureCV/tests/test_config.py", "Configuration System Tests"),
         ("PureCV/tests/test_histogram_extractor.py", "Histogram Extractor Tests"),
         ("PureCV/test_ball_count_manager.py", "Ball Count Manager Tests"),
+        
+        # Feature-specific tests
         ("PureCV/test_task_4_3.py", "Population Regeneration Tests"),
         ("PureCV/test_molt_tracker_init.py", "MOLT Tracker Initialization Tests"),
+        ("PureCV/test_task_7_3.py", "Ball Count Verification Integration Tests"),
+        ("PureCV/test_task_8_2.py", "Tracker Information and Statistics Tests"),
+        
+        # Interface and integration tests
+        ("PureCV/test_interface_compliance.py", "Interface Compliance Tests"),
         ("PureCV/tests/test_integration.py", "Integration Tests"),
+        
+        # Usage examples
         ("PureCV/examples/basic_usage.py", "Usage Examples"),
     ]
     
