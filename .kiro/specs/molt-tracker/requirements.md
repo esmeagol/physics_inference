@@ -4,6 +4,8 @@
 
 This feature implements the MOLT (Multiple Object Local Tracker) algorithm for robust tracking of multiple small, similar objects in low-quality, low-frame-rate video. MOLT is specifically designed for scenarios where traditional trackers struggle, such as tracking multiple balls in cue sports videos. The algorithm uses a population-based approach where each object is tracked by multiple local trackers that search for the most likely object position using both appearance features and motion constraints.
 
+The implementation uses a modular architecture with focused components for better maintainability, testability, and reusability. The modular design separates tracking logic, appearance modeling, configuration management, and count verification into independent modules while maintaining a clean, consistent API.
+
 ## Requirements
 
 ### Requirement 1
