@@ -13,7 +13,7 @@ from .table_detection import (
     perspective_transform
 )
 
-from .molt_tracker import (
+from .molt import (
     MOLTTracker,
     MOLTTrackerConfig
 )
