@@ -707,7 +707,7 @@ class MOLTUnifiedTest:
 def main():
     """Main function to run the unified MOLT test."""
     # Test configuration
-    video_path = "/private/tmp/tracker_benchmark_results/SV-ByteTrack_tracking.mp4"
+    video_path = "assets/test_videos/video_1.mp4"
     model_path = "CVModelInference/trained_models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt"
     output_dir = "assets/output/molt_unified_test"
     max_frames = 1500  # Process first 1500 frames (~33.3 seconds at 45 FPS)

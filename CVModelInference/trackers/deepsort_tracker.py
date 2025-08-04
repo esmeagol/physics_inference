@@ -305,6 +305,7 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
                     # Add class info if available
                     if tracker['class_info']:
                         for key, value in tracker['class_info'].items():
+
                             track[key] = value
                             
                     ret.append(track)
@@ -387,7 +388,9 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
                     class_info: ClassInfo = {}
                     det_info_item = det_info_list[det_idx]
                     if 'class' in det_info_item:
-                        class_info['class_name'] = str(det_info_item['class'])
+                        class_name = str(det_info_item['class'])
+                        # Normalize class name to match ground truth expectations
+                        class_info['class_name'] = self.normalize_ball_class(class_name)
                     if 'class_id' in det_info_item:
                         class_info['class_id'] = int(det_info_item['class_id'])
                     if 'confidence' in det_info_item:
@@ -462,6 +465,7 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
                 # Add class info if available
                 if tracker['class_info']:
                     for key, value in tracker['class_info'].items():
+
                         track[key] = value
                         
                 ret.append(track)
@@ -662,6 +666,13 @@ class DeepSORTTracker(Tracker[Dict[str, Any]]):
             
         matches = np.concatenate(matches, axis=0)
         return matches.tolist(), unmatched_detections, unmatched_trackers
+    
+    # Using normalize_ball_class from base Tracker class
+    
+    def _get_next_id(self) -> int:
+        """Get the next available track ID."""
+        self.next_id += 1
+        return self.next_id - 1
     
     def reset(self) -> None:
         """
@@ -919,6 +930,7 @@ def visualize(self, frame: Frame, tracks: Sequence[Track],
                     # Add class info if available
                     if tracker['class_info']:
                         for key, value in tracker['class_info'].items():
+
                             track[key] = value
                             
                     ret.append(track)
@@ -1022,6 +1034,7 @@ def visualize(self, frame: Frame, tracks: Sequence[Track],
                 # Add class info if available
                 if tracker['class_info']:
                     for key, value in tracker['class_info'].items():
+
                         track[key] = value
                         
                 ret.append(track)

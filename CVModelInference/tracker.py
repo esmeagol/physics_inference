@@ -42,6 +42,46 @@ class Tracker(ABC, Generic[T]):
         T: Type of the configuration dictionary used to initialize the tracker
     """
     
+    def normalize_ball_class(self, class_name: str) -> str:
+        """
+        Normalize ball class names to match ground truth expectations.
+        
+        Args:
+            class_name: Original class name from detection
+            
+        Returns:
+            Normalized class name
+        """
+        # Convert to lowercase for case-insensitive comparison
+        ball_type = class_name.lower()
+        
+        # Handle hyphenated class names (e.g., 'red-ball' -> 'red')
+        if '-' in ball_type:
+            parts = ball_type.split('-')
+            if len(parts) == 2 and parts[1] == 'ball':
+                ball_type = parts[0]  # Extract color name from 'color-ball'
+        
+        # Map common variations to standard names
+        if ball_type in ['cue', 'cue_ball', 'cueball', 'white_ball', 'white-ball', 'white']:
+            return 'white'
+        elif ball_type in ['red', 'red_ball', 'redball', 'red-ball']:
+            return 'red'
+        elif ball_type in ['yellow', 'yellow_ball', 'yellowball', 'yellow-ball']:
+            return 'yellow'
+        elif ball_type in ['green', 'green_ball', 'greenball', 'green-ball']:
+            return 'green'
+        elif ball_type in ['brown', 'brown_ball', 'brownball', 'brown-ball']:
+            return 'brown'
+        elif ball_type in ['blue', 'blue_ball', 'blueball', 'blue-ball']:
+            return 'blue'
+        elif ball_type in ['pink', 'pink_ball', 'pinkball', 'pink-ball']:
+            return 'pink'
+        elif ball_type in ['black', 'black_ball', 'blackball', 'black-ball']:
+            return 'black'
+        
+        # If no mapping found, return the original name in lowercase
+        return ball_type
+    
     @abstractmethod
     def __init__(self, **kwargs: Any) -> None:
         """
