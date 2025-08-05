@@ -10,15 +10,10 @@ import os
 import argparse
 import time
 from pathlib import Path
+from typing import Optional, Union, Dict, Any
 from dotenv import load_dotenv
 import cv2
-import sys
-from pathlib import Path
-
-# Add the project root to the Python path
-sys.path.append(str(Path(__file__).parent.parent))
-
-from CVModelInference.roboflow_local_inference import RoboflowLocal
+from detection.roboflow_local_inference import RoboflowLocal
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,7 +24,7 @@ DEFAULT_CONFIG = {
     'workspace': os.getenv('ROBOFLOW_WORKSPACE', 'cvueplay'),
     'project': os.getenv('ROBOFLOW_PROJECT', 'snookers-gkqap'),
     'version': int(os.getenv('ROBOFLOW_MODEL_VERSION', '1')),
-    'server_url': os.getenv('ROBOFLOW_SERVER_URL', 'http://localhost:9001'),
+
     'confidence': float(os.getenv('CONFIDENCE_THRESHOLD', '0.5')),
 }
 
@@ -42,7 +37,7 @@ def process_video(
     version: int | None = None,
     confidence: float | None = None,
     frame_skip: int = 0,
-    server_url: str | None = None,
+
 ) -> None:
     # Apply defaults from environment variables if not provided
     if api_key is None:
@@ -53,9 +48,6 @@ def process_video(
         version = int(DEFAULT_CONFIG['version']) if DEFAULT_CONFIG['version'] else None
     if confidence is None:
         confidence = float(DEFAULT_CONFIG['confidence']) if DEFAULT_CONFIG['confidence'] else None
-    if server_url is None:
-        server_url = str(DEFAULT_CONFIG['server_url']) if DEFAULT_CONFIG['server_url'] else None
-        
     # Validate required parameters
     if not api_key:
         raise ValueError("Roboflow API key is required. Set it in .env file or pass as argument.")
@@ -65,8 +57,6 @@ def process_video(
         raise ValueError("Model version is required.")
     if confidence is None:
         raise ValueError("Confidence threshold is required.")
-    if server_url is None:
-        raise ValueError("Server URL is required.")
     # Create output directories if they don't exist
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(debug_dir, exist_ok=True)
@@ -76,7 +66,6 @@ def process_video(
         api_key=api_key,
         model_id=model_id,
         version=version,
-        server_url=server_url,
         confidence=confidence
     )
     
@@ -129,7 +118,7 @@ def process_video(
                 predictions = roboflow_client.predict(rgb_frame)
                 
                 # Draw predictions on the frame
-                annotated_frame = roboflow_client.visualize_predictions(
+                annotated_frame = roboflow_client.visualize(
                     rgb_frame, predictions
                 )
                 
@@ -183,7 +172,7 @@ def process_video(
         print(f"Output video saved to: {output_video_path}")
         print("="*50)
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Process video with Roboflow inference")
     parser.add_argument(
         "--input",
@@ -203,11 +192,18 @@ def main():
         default="assets/debug",
         help="Directory to save debug frames"
     )
+    # Safely format the help string for API key
+    api_key_help = "Roboflow API key (default: from .env"
+    if DEFAULT_CONFIG.get('api_key'):
+        api_key = str(DEFAULT_CONFIG['api_key'])
+        api_key_help += f": {api_key[:4]}...{api_key[-4:] if len(api_key) > 4 else ''}"
+    api_key_help += ")"
+    
     parser.add_argument(
         "--api-key",
         type=str,
         default=None,
-        help=f"Roboflow API key (default: from .env: {DEFAULT_CONFIG['api_key'][:4]}...{DEFAULT_CONFIG['api_key'][-4:] if DEFAULT_CONFIG['api_key'] else ''})"
+        help=api_key_help
     )
     parser.add_argument(
         "--model-id",
@@ -237,7 +233,7 @@ def main():
         "--server-url",
         type=str,
         default=None,
-        help=f"URL of the Roboflow inference server (default: from .env: {DEFAULT_CONFIG['server_url']})"
+
     )
     
     args = parser.parse_args()
@@ -251,7 +247,7 @@ def main():
         version=args.version,
         confidence=args.confidence,
         frame_skip=args.frame_skip,
-        server_url=args.server_url
+
     )
 
 if __name__ == "__main__":

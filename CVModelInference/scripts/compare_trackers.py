@@ -35,7 +35,7 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from CVModelInference.local_pt_inference import LocalPT
+    from detection.local_pt_inference import LocalPT
     from CVModelInference.tracker_benchmark import SnookerTrackerBenchmark
     from CVModelInference.trackers.deepsort_tracker import DeepSORTTracker
     from CVModelInference.trackers.sv_bytetrack_tracker import SVByteTrackTracker

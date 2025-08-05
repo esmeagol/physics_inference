@@ -59,7 +59,7 @@ benchmark.visualize_results('benchmark_results.png')
 For best results, provide a detection model that implements the `InferenceRunner` interface:
 
 ```python
-from CVModelInference.local_pt_inference import LocalPT
+from detection.local_pt_inference import LocalPT
 from CVModelInference.tracker_benchmark import SnookerTrackerBenchmark
 
 # Initialize detection model

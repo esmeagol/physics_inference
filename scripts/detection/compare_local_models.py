@@ -8,22 +8,17 @@ import os
 import argparse
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
 import glob
 import sys
 
-# Add parent directory to path to import from CVModelInference
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from CVModelInference.local_pt_inference import LocalPT
+from detection.local_pt_inference import LocalPT
 
 
-# LocalPT is imported from CVModelInference.local_pt_inference
-
-
-def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou: float = 0.5):
+def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou: float = 0.5) -> tuple[LocalPT, LocalPT]:
     """
     Load two local PyTorch models.
     
@@ -45,7 +40,7 @@ def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou
     return model1, model2
 
 
-def process_image(model, image: np.ndarray, confidence: float = 0.5) -> Dict:
+def process_image(model: LocalPT, image: np.ndarray, confidence: float = 0.5) -> dict[str, Any]:
     """
     Process a single image with the given model.
     
@@ -70,7 +65,7 @@ def process_image(model, image: np.ndarray, confidence: float = 0.5) -> Dict:
     }
 
 
-def create_side_by_side_image(image: np.ndarray, results1: Dict, results2: Dict, 
+def create_side_by_side_image(image: np.ndarray, results1: dict[str, Any], results2: dict[str, Any], 
                              model1_name: str, model2_name: str) -> np.ndarray:
     """
     Create a side-by-side comparison image with detection results.
@@ -107,7 +102,7 @@ def create_side_by_side_image(image: np.ndarray, results1: Dict, results2: Dict,
     return comparison
 
 
-def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
+def draw_detections(image: np.ndarray, results: dict[str, Any], model_name: str) -> None:
     """
     Draw detection results on an image.
     
@@ -188,7 +183,7 @@ def draw_detections(image: np.ndarray, results: Dict, model_name: str) -> None:
     )
 
 
-def process_images(model1, model2, input_dir: str, output_dir: str,
+def process_images(model1: LocalPT, model2: LocalPT, input_dir: str, output_dir: str,
                   model1_name: str, model2_name: str, confidence: float = 0.5,
                   image_extensions: List[str] | None = None) -> Dict:
     """
@@ -236,8 +231,7 @@ def process_images(model1, model2, input_dir: str, output_dir: str,
                 # Read image
                 image = cv2.imread(image_file)
                 if image is None:
-                    print(f"Failed to read image: {image_file}")
-                    continue
+                    raise FileNotFoundError(f"Failed to read image: {image_file}")
                 
                 # Process with both models
                 results1 = process_image(model1, image, confidence)
@@ -308,7 +302,7 @@ def process_images(model1, model2, input_dir: str, output_dir: str,
     return results
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Compare two local PyTorch models on a directory of images')
     parser.add_argument('--model1', type=str, required=True,
                        help='Path to first model weights (.pt file)')
@@ -371,8 +365,7 @@ def main():
         image_extensions=image_extensions
     )
     
-    # You can do additional processing with results if needed
-    return results
+    # Results are processed within the process_images function
 
 
 if __name__ == "__main__":

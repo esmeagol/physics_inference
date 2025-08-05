@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="PureCV",
+    name="physics_inference",
     version="0.1.0",
-    packages=find_packages(),
+    package_dir={"":"src"},
+    packages=find_packages(where="src"),
     install_requires=[
         "opencv-python>=4.5.0",
         "numpy>=1.19.0",

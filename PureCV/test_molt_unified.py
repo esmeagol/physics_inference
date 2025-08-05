@@ -27,7 +27,7 @@ import json
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from CVModelInference.local_pt_inference import LocalPT
+from detection.local_pt_inference import LocalPT
 from PureCV.molt import MOLTTracker, MOLTTrackerConfig
 
 

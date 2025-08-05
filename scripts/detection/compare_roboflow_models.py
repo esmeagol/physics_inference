@@ -15,10 +15,9 @@ from tqdm import tqdm
 
 # Import the InferenceRunner implementations
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from CVModelInference.roboflow_local_inference import RoboflowLocal
+from detection.roboflow_local_inference import RoboflowLocal
 
-def parse_model_id(full_model_id: str):
+def parse_model_id(full_model_id: str) -> tuple[str, str, int]:
     """Parse a full model ID into workspace, model_id, and version."""
     # Format: workspace/model_id/version
     parts = full_model_id.split('/')
@@ -26,7 +25,7 @@ def parse_model_id(full_model_id: str):
         raise ValueError(f"Invalid model ID format: {full_model_id}. Expected format: workspace/model_id/version")
     return parts[0], parts[1], int(parts[2])
 
-def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str, server_url: str = "http://localhost:9001"):
+def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str) -> tuple[RoboflowLocal, RoboflowLocal]:
     """
     Initialize and load two Roboflow models using the RoboflowLocal implementation.
     
@@ -34,7 +33,6 @@ def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str,
         api_key: Roboflow API key
         model1_full_id: First model full ID (e.g., 'workspace/model_id/1')
         model2_full_id: Second model full ID (e.g., 'workspace/model_id/1')
-        server_url: URL of the local Roboflow inference server
         
     Returns:
         Tuple of (model1, model2) as RoboflowLocal instances
@@ -43,33 +41,34 @@ def load_roboflow_models(api_key: str, model1_full_id: str, model2_full_id: str,
     workspace1, model1_id, version1 = parse_model_id(model1_full_id)
     model1_id_full = f"{workspace1}/{model1_id}"
     print(f"Loading model 1: {model1_id_full} (v{version1})")
-    model1 = RoboflowLocal(api_key=api_key, model_id=model1_id_full, version=version1, server_url=server_url)
+    model1 = RoboflowLocal(api_key=api_key, model_id=model1_id_full, version=version1)
     
     # Parse model 2
     workspace2, model2_id, version2 = parse_model_id(model2_full_id)
     model2_id_full = f"{workspace2}/{model2_id}"
     print(f"Loading model 2: {model2_id_full} (v{version2})")
-    model2 = RoboflowLocal(api_key=api_key, model_id=model2_id_full, version=version2, server_url=server_url)
+    model2 = RoboflowLocal(api_key=api_key, model_id=model2_id_full, version=version2)
     
     return model1, model2
 
-def process_image(model, image_path: str, confidence: float = 0.5, overlap: int = 30) -> dict[Any, Any]:
+def process_image(model: RoboflowLocal, image_path: str, confidence: float = 0.5, overlap: int = 30) -> dict[str, Any]:
     """
     Process a single image with the given model.
     
     Args:
-        model: InferenceRunner implementation
+        model: RoboflowLocal model instance
         image_path: Path to input image
-        confidence: Confidence threshold
-        overlap: Overlap percentage
+        confidence: Confidence threshold for detections
+        overlap: Overlap threshold for NMS
         
     Returns:
-        Dictionary containing detection results
+        Detection results as a dictionary
     """
+    # Process the image with the model
     result = model.predict(image_path, confidence=confidence, overlap=overlap)
-    return dict(result) if result else {}
+    return dict(result) if result is not None else {}
 
-def process_image_pair(model1, model2, image_path: str, output_dir: str, confidence: float = 0.5):
+def process_image_pair(model1: RoboflowLocal, model2: RoboflowLocal, image_path: str, output_dir: str, confidence: float = 0.5) -> None:
     """
     Process an image with both models and save results.
     
@@ -97,7 +96,7 @@ def process_image_pair(model1, model2, image_path: str, output_dir: str, confide
     # Generate and save annotated image
     save_annotated_comparison(image_path, results1, results2, filename, output_dir)
 
-def save_text_results(results1: dict, results2: dict, filename: str, output_dir: str):
+def save_text_results(results1: dict[str, Any], results2: dict[str, Any], filename: str, output_dir: str) -> None:
     """Save detection results to a text file."""
     output_path = os.path.join(output_dir, f"{filename}_results.txt")
     
@@ -138,14 +137,13 @@ def save_text_results(results1: dict, results2: dict, filename: str, output_dir:
     
     print(f"Saved text results to {output_path}")
 
-def save_annotated_comparison(image_path: str, results1: dict, results2: dict, 
-                            filename: str, output_dir: str):
+def save_annotated_comparison(image_path: str, results1: dict[str, Any], results2: dict[str, Any], 
+                            filename: str, output_dir: str) -> None:
     """Generate and save a side-by-side comparison of detections."""
     # Load original image
     img = cv2.imread(image_path)
     if img is None:
-        print(f"Error: Could not load image {image_path}")
-        return
+        raise FileNotFoundError(f"Error: Could not load image {image_path}")
     
     # Create side-by-side comparison
     h, w = img.shape[:2]
@@ -167,7 +165,7 @@ def save_annotated_comparison(image_path: str, results1: dict, results2: dict,
     cv2.imwrite(output_path, comparison)
     print(f"Saved comparison image to {output_path}")
 
-def draw_detections(img: np.ndarray, results: dict, offset: Tuple[int, int], 
+def draw_detections(img: np.ndarray, results: Dict[str, Any], offset: Tuple[int, int], 
                    model_name: str) -> np.ndarray:
     """Draw detections on the image with a summary."""
     x_offset, y_offset = offset
@@ -187,7 +185,7 @@ def draw_detections(img: np.ndarray, results: dict, offset: Tuple[int, int],
     
     # Draw each detection
     predictions = results.get('predictions', [])
-    class_counts: dict[str, int] = {}
+    class_counts: Dict[str, int] = {}
     
     for pred in predictions:
         cls = pred['class']
@@ -228,7 +226,7 @@ def draw_detections(img: np.ndarray, results: dict, offset: Tuple[int, int],
     
     return img
 
-def process_directory(model1, model2, input_dir: str, output_dir: str, 
+def process_directory(model1: RoboflowLocal, model2: RoboflowLocal, input_dir: str, output_dir: str, 
                      confidence: float = 0.5, limit: int | None = None) -> None:
     """Process all images in a directory."""
     # Get all image files
@@ -260,7 +258,7 @@ def process_directory(model1, model2, input_dir: str, output_dir: str,
         except Exception as e:
             print(f"Error processing {img_path}: {str(e)}")
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Compare two Roboflow models on a set of images.')
     parser.add_argument('--api-key', type=str, required=True, 
                        help='Roboflow API key')
@@ -276,8 +274,6 @@ def main():
                        help='Confidence threshold (0-1)')
     parser.add_argument('--limit', type=int, default=None,
                        help='Maximum number of images to process')
-    parser.add_argument('--server-url', type=str, default="http://localhost:9001",
-                       help='URL of the local Roboflow inference server')
     
     args = parser.parse_args()
     
@@ -288,8 +284,7 @@ def main():
     model1, model2 = load_roboflow_models(
         args.api_key,
         args.model1,
-        args.model2,
-        server_url=args.server_url
+        args.model2
     )
     
     # Process all images in the input directory
