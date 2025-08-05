@@ -301,3 +301,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+# Test comment
+# Test comment for pre-commit hook
