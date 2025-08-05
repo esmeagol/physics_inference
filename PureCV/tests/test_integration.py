@@ -42,7 +42,7 @@ def create_test_detections() -> List[Dict[str, Any]]:
     ]
 
 
-def test_component_integration():
+def test_component_integration() -> None:
     """Test that all components work together."""
     print("Testing component integration...")
     
@@ -84,7 +84,7 @@ def test_component_integration():
     print("✓ Component integration test passed!")
 
 
-def test_molt_tracker_with_config():
+def test_molt_tracker_with_config() -> None:
     """Test MOLTTracker with custom configuration."""
     print("Testing MOLT tracker with custom configuration...")
     
@@ -114,7 +114,7 @@ def test_molt_tracker_with_config():
     print("✓ MOLT tracker with config test passed!")
 
 
-def test_molt_tracker_with_kwargs():
+def test_molt_tracker_with_kwargs() -> None:
     """Test MOLTTracker with kwargs override."""
     print("Testing MOLT tracker with kwargs override...")
     
@@ -141,7 +141,7 @@ def test_molt_tracker_with_kwargs():
     print("✓ MOLT tracker with kwargs test passed!")
 
 
-def test_visualization():
+def test_visualization() -> None:
     """Test tracker visualization functionality."""
     print("Testing tracker visualization...")
     
@@ -171,7 +171,7 @@ def test_visualization():
     print("✓ Tracker visualization test passed!")
 
 
-def test_population_statistics():
+def test_population_statistics() -> None:
     """Test population statistics functionality."""
     print("Testing population statistics...")
     
@@ -199,7 +199,7 @@ def test_population_statistics():
     print("✓ Population statistics test passed!")
 
 
-def test_error_handling():
+def test_error_handling() -> None:
     """Test error handling in integrated system."""
     print("Testing error handling...")
     

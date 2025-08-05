@@ -77,7 +77,7 @@ def create_test_detections() -> List[Dict[str, Any]]:
     ]
 
 
-def test_molt_tracker_initialization():
+def test_molt_tracker_initialization() -> None:
     """Test MOLT tracker initialization with test data."""
     print("Testing MOLT tracker initialization...")
     
@@ -115,7 +115,7 @@ def test_molt_tracker_initialization():
     print("✓ MOLT tracker initialization test passed!")
 
 
-def test_molt_tracker_initialization_edge_cases():
+def test_molt_tracker_initialization_edge_cases() -> None:
     """Test MOLT tracker initialization with edge cases."""
     print("Testing MOLT tracker initialization edge cases...")
     
@@ -150,7 +150,7 @@ def test_molt_tracker_initialization_edge_cases():
     print("✓ MOLT tracker initialization edge cases test passed!")
 
 
-def test_tracker_info():
+def test_tracker_info() -> None:
     """Test tracker info functionality."""
     print("Testing tracker info...")
     

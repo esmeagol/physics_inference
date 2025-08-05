@@ -51,7 +51,7 @@ def create_initial_detections() -> List[Dict[str, Any]]:
     ]
 
 
-def basic_tracking_example():
+def basic_tracking_example() -> None:
     """Demonstrate basic tracking functionality."""
     print("=== Basic MOLT Tracker Usage Example ===\n")
     
@@ -101,7 +101,7 @@ def basic_tracking_example():
     print("\n✅ Basic tracking example completed successfully!")
 
 
-def custom_configuration_example():
+def custom_configuration_example() -> None:
     """Demonstrate usage with custom configuration."""
     print("\n=== Custom Configuration Example ===\n")
     
@@ -142,7 +142,7 @@ def custom_configuration_example():
     print("\n✅ Custom configuration example completed!")
 
 
-def kwargs_override_example():
+def kwargs_override_example() -> None:
     """Demonstrate parameter override with kwargs."""
     print("\n=== Kwargs Override Example ===\n")
     
@@ -166,7 +166,7 @@ def kwargs_override_example():
     print("\n✅ Kwargs override example completed!")
 
 
-def error_handling_example():
+def error_handling_example() -> None:
     """Demonstrate error handling."""
     print("\n=== Error Handling Example ===\n")
     

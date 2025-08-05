@@ -14,13 +14,13 @@ import cv2
 from PureCV.molt.histogram_extractor import HistogramExtractor
 
 
-def create_test_patch(color=(255, 0, 0), size=(20, 20)):
+def create_test_patch(color: tuple[int, int, int] = (255, 0, 0), size: tuple[int, int] = (20, 20)) -> np.ndarray:
     """Create a test image patch with a solid color."""
     patch = np.full((size[1], size[0], 3), color, dtype=np.uint8)
     return patch
 
 
-def test_histogram_extractor_initialization():
+def test_histogram_extractor_initialization() -> None:
     """Test HistogramExtractor initialization."""
     # Test default initialization
     extractor = HistogramExtractor()
@@ -47,7 +47,7 @@ def test_histogram_extractor_initialization():
         pass
 
 
-def test_histogram_extraction():
+def test_histogram_extraction() -> None:
     """Test histogram extraction from image patches."""
     extractor = HistogramExtractor(num_bins=8, color_space='HSV')
     
@@ -73,7 +73,7 @@ def test_histogram_extraction():
     assert not np.allclose(red_hist, blue_hist)
 
 
-def test_histogram_extraction_edge_cases():
+def test_histogram_extraction_edge_cases() -> None:
     """Test histogram extraction with edge cases."""
     extractor = HistogramExtractor()
     
@@ -99,7 +99,7 @@ def test_histogram_extraction_edge_cases():
         pass
 
 
-def test_histogram_comparison():
+def test_histogram_comparison() -> None:
     """Test histogram comparison methods."""
     extractor = HistogramExtractor(num_bins=8)
     
@@ -139,7 +139,7 @@ def test_histogram_comparison():
     assert distance_diff_chi > distance_same_chi
 
 
-def test_similarity_normalization():
+def test_similarity_normalization() -> None:
     """Test similarity score normalization."""
     extractor = HistogramExtractor()
     
@@ -165,7 +165,7 @@ def test_similarity_normalization():
         pass
 
 
-def test_histogram_normalization():
+def test_histogram_normalization() -> None:
     """Test histogram normalization."""
     extractor = HistogramExtractor()
     
@@ -186,7 +186,7 @@ def test_histogram_normalization():
     assert np.allclose(normalized_zero, np.ones(4) / 4)
 
 
-def test_get_config():
+def test_get_config() -> None:
     """Test getting extractor configuration."""
     extractor = HistogramExtractor(num_bins=16, color_space='HSV')
     config = extractor.get_config()

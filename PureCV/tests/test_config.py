@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from PureCV.molt.config import MOLTTrackerConfig
 
 
-def test_default_config_creation():
+def test_default_config_creation() -> None:
     """Test creating a default configuration."""
     config = MOLTTrackerConfig.create_default()
     
@@ -29,7 +29,7 @@ def test_default_config_creation():
     assert config.max_frames_without_detection > 0
 
 
-def test_snooker_config_creation():
+def test_snooker_config_creation() -> None:
     """Test creating a snooker-specific configuration."""
     config = MOLTTrackerConfig.create_for_snooker()
     
@@ -39,7 +39,7 @@ def test_snooker_config_creation():
     assert config.expected_ball_counts['black'] == 1
 
 
-def test_pool_config_creation():
+def test_pool_config_creation() -> None:
     """Test creating a pool-specific configuration."""
     config = MOLTTrackerConfig.create_for_pool()
     
@@ -49,7 +49,7 @@ def test_pool_config_creation():
     assert 'red' in config.expected_ball_counts or 'yellow' in config.expected_ball_counts
 
 
-def test_config_validation():
+def test_config_validation() -> None:
     """Test configuration validation."""
     config = MOLTTrackerConfig.create_default()
     
@@ -83,7 +83,7 @@ def test_config_validation():
         pass
 
 
-def test_config_to_dict():
+def test_config_to_dict() -> None:
     """Test converting configuration to dictionary."""
     config = MOLTTrackerConfig.create_default()
     config_dict = config.to_dict()

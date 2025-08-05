@@ -26,7 +26,7 @@ except ImportError:
     TRACKER_INTERFACE_AVAILABLE = False
 
 
-def test_interface_inheritance():
+def test_interface_inheritance() -> bool:
     """Test that MOLTTracker properly inherits from Tracker."""
     if not TRACKER_INTERFACE_AVAILABLE:
         print("Skipping interface inheritance test - interface not available")
@@ -45,7 +45,7 @@ def test_interface_inheritance():
     return True
 
 
-def test_required_methods():
+def test_required_methods() -> bool:
     """Test that all required methods are implemented."""
     print("Testing required methods implementation...")
     
@@ -63,7 +63,7 @@ def test_required_methods():
     return True
 
 
-def test_method_signatures():
+def test_method_signatures() -> bool:
     """Test that method signatures match the interface."""
     print("Testing method signatures...")
     
@@ -100,7 +100,7 @@ def test_method_signatures():
     return True
 
 
-def test_tracker_info_format():
+def test_tracker_info_format() -> bool:
     """Test that TrackerInfo has the expected format."""
     print("Testing TrackerInfo format...")
     
@@ -128,7 +128,7 @@ def test_tracker_info_format():
     return True
 
 
-def test_track_format():
+def test_track_format() -> bool:
     """Test that Track objects have the expected format."""
     print("Testing Track format...")
     
@@ -170,7 +170,7 @@ def test_track_format():
     return True
 
 
-def test_state_management():
+def test_state_management() -> bool:
     """Test proper state management through the interface."""
     print("Testing state management...")
     
@@ -207,7 +207,7 @@ def test_state_management():
     return True
 
 
-def test_error_handling():
+def test_error_handling() -> bool:
     """Test proper error handling through the interface."""
     print("Testing error handling...")
     
@@ -235,7 +235,7 @@ def test_error_handling():
     return True
 
 
-def test_configuration_interface():
+def test_configuration_interface() -> bool:
     """Test configuration through the interface."""
     print("Testing configuration interface...")
     
