@@ -12,10 +12,10 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, cast
 from numpy.typing import NDArray
 
-# Add PureCV to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
-from tracking.trackers.molt import MOLTTracker, MOLTTrackerConfig
+from src.tracking.trackers.molt import MOLTTracker, MOLTTrackerConfig
 
 
 def create_test_frame(width: int = 640, height: int = 480) -> NDArray[np.uint8]:

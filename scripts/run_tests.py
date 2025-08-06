@@ -95,9 +95,8 @@ class TestSuiteRunner:
         """Run unittest discovery for all test files."""
         print("   Discovering and running unit tests...")
         
-        # Find all test files
+        # Use the main tests directory which now contains all tests
         test_dirs = [
-            self.project_root / "src" / "tracking" / "trackers" / "molt" / "tests",
             self.project_root / "tests",
         ]
         

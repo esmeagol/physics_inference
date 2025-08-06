@@ -12,7 +12,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import numpy as np
 import cv2
 from numpy.typing import NDArray
-from tracking.trackers.molt.histogram_extractor import HistogramExtractor
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+
+from src.tracking.trackers.molt.histogram_extractor import HistogramExtractor
 
 
 def create_test_patch(color: tuple[int, int, int] = (255, 0, 0), size: tuple[int, int] = (20, 20)) -> NDArray[np.uint8]:

@@ -7,7 +7,12 @@ with mixed time formats including both single time and time range events.
 
 import unittest
 from typing import Dict, List, Any
-from event_processor import EventProcessor, EventType, ProcessedEvent
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.tracking.event_processor import EventProcessor, EventType, ProcessedEvent
 
 
 class TestEventProcessor(unittest.TestCase):

@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 import cv2
 
 # Import the Tracker interface from CVModelInference
-from tracking.tracker import Tracker, TrackerInfo, Detection, Track, Frame
+from src.tracking.tracker import Tracker, TrackerInfo, Detection, Track, Frame
 
 from .config import MOLTTrackerConfig
 from .types import Position, Size, Histogram

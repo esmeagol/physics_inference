@@ -11,9 +11,10 @@ import cv2
 from typing import List, Dict, Any, Tuple, Optional
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
-from tracking.trackers.molt import MOLTTracker
+from src.tracking.trackers.molt import MOLTTracker
 
 # Add type aliases for numpy arrays
 NDArrayUInt8 = np.ndarray[Any, np.dtype[np.uint8]]

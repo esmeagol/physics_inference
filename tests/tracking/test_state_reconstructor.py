@@ -3,8 +3,13 @@ Tests for StateReconstructor class.
 """
 
 import unittest
-from event_processor import EventProcessor
-from state_reconstructor import StateReconstructor, BallState
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.tracking.event_processor import EventProcessor
+from src.tracking.state_reconstructor import StateReconstructor, BallState
 
 
 class TestStateReconstructor(unittest.TestCase):

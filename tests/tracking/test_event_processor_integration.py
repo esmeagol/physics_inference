@@ -2,7 +2,12 @@
 Integration test for EventProcessor with realistic snooker scenarios.
 """
 
-from event_processor import EventProcessor, EventType
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.tracking.event_processor import EventProcessor, EventType
 
 
 def test_realistic_snooker_scenario():

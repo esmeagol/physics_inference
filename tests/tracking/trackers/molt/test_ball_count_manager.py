@@ -13,7 +13,12 @@ from typing import Dict, List, Any
 import sys
 import os
 
-from tracking.trackers.molt.ball_count_manager import BallCountManager
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+
+from src.tracking.trackers.molt.ball_count_manager import BallCountManager
 
 
 class TestBallCountManager(unittest.TestCase):

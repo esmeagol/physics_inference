@@ -5,12 +5,17 @@ Unit tests for MomentEvaluator class.
 import unittest
 from unittest.mock import Mock, MagicMock
 import math
-from moment_evaluator import (
+import sys
+import os
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.tracking.moment_evaluator import (
     MomentEvaluator, ErrorType, CountError, IllegalChange, DuplicationError,
     MomentEvaluation
 )
-from event_processor import EventProcessor, ProcessedEvent, EventType
-from state_reconstructor import StateReconstructor, BallState
+from src.tracking.event_processor import EventProcessor, ProcessedEvent, EventType
+from src.tracking.state_reconstructor import StateReconstructor, BallState
 
 
 class TestMomentEvaluator(unittest.TestCase):
