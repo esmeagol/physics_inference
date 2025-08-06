@@ -15,7 +15,12 @@ from tqdm import tqdm
 
 # Import the InferenceRunner implementations
 import sys
-from detection.roboflow_local_inference import RoboflowLocal
+from pathlib import Path
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from src.detection.roboflow_local_inference import RoboflowLocal
 
 def parse_model_id(full_model_id: str) -> tuple[str, str, int]:
     """Parse a full model ID into workspace, model_id, and version."""

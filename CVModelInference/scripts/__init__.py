@@ -10,5 +10,4 @@ __all__ = [
     'generate_test_image',
     'process_test_images',
     'test_table_detection',
-    'test_roboflow_video',
 ]

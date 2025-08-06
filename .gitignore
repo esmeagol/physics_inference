@@ -68,4 +68,4 @@ data/
 *.h5
 output/
 test_images/
-CVModelInference/trained_models/
+trained_models/

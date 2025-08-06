@@ -14,27 +14,47 @@ import numpy as np
 from tqdm import tqdm
 import glob
 import sys
+from pathlib import Path
 
-from detection.local_pt_inference import LocalPT
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from src.detection.local_pt_inference import LocalPT
 
 
-def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou: float = 0.5) -> tuple[LocalPT, LocalPT]:
+def is_rfdetr_model(model_path: str) -> bool:
+    """Check if the model is an RF-DETR model."""
+    # Check if the model path contains 'rf-detr' or 'detr' in the name
+    model_name = os.path.basename(model_path).lower()
+    return 'rf-detr' in model_name or 'detr' in model_name
+
+def load_models(model1_path: str, model2_path: str, confidence: float = 0.5, iou: float = 0.5) -> tuple[Any, Any]:
     """
-    Load two local PyTorch models.
+    Load two local PyTorch models, automatically detecting their types.
     
     Args:
-        model1_path: Path to first model weights (.pt file)
-        model2_path: Path to second model weights (.pt file)
+        model1_path: Path to first model weights (.pt file or directory)
+        model2_path: Path to second model weights (.pt file or directory)
         confidence: Confidence threshold for detections
-        iou: IoU threshold for NMS
+        iou: IoU threshold for NMS (only used for YOLO models)
         
     Returns:
-        Tuple of (model1, model2) as LocalPT instances
+        Tuple of (model1, model2) model instances
     """
+    # Determine model types
+    is_model1_rfdetr = is_rfdetr_model(model1_path)
+    is_model2_rfdetr = is_rfdetr_model(model2_path)
+    
+    # Load model 1
     print(f"Loading model 1: {os.path.basename(model1_path)}")
+    if is_model1_rfdetr:
+        print("Warning: RF-DETR models are not yet supported. Using LocalPT instead.")
     model1 = LocalPT(model_path=model1_path, confidence=confidence, iou=iou)
     
+    # Load model 2
     print(f"Loading model 2: {os.path.basename(model2_path)}")
+    if is_model2_rfdetr:
+        print("Warning: RF-DETR models are not yet supported. Using LocalPT instead.")
     model2 = LocalPT(model_path=model2_path, confidence=confidence, iou=iou)
     
     return model1, model2
@@ -58,6 +78,12 @@ def process_image(model: LocalPT, image: np.ndarray, confidence: float = 0.5) ->
     
     # Adapt the output format to match what the rest of this script expects
     # The LocalPT class returns a different format than the original LocalPTModel
+    print("\nModel predictions:")
+    for i, pred in enumerate(result.get("predictions", [])):
+        cls = pred['class']
+        conf = pred['confidence']
+        print(f"  Detection {i+1}: Class: {cls}, Confidence: {conf:.2f}")
+    
     return {
         "predictions": result.get("predictions", []),
         "model_info": model.get_model_info(),

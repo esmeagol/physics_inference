@@ -9,11 +9,16 @@ and creates an annotated output video.
 import os
 import argparse
 import time
+import sys
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 from dotenv import load_dotenv
 import cv2
-from detection.roboflow_local_inference import RoboflowLocal
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from src.detection.roboflow_local_inference import RoboflowLocal
 
 # Load environment variables from .env file
 load_dotenv()

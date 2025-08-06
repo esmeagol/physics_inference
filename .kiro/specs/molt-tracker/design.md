@@ -165,7 +165,7 @@ The main tracker class that implements the Tracker interface and orchestrates th
 
 **Usage:**
 ```python
-from PureCV.molt import MOLTTracker, MOLTTrackerConfig
+from tracking.trackers.molt import MOLTTracker, MOLTTrackerConfig
 
 # With default configuration
 tracker = MOLTTracker()
@@ -270,7 +270,7 @@ Handles appearance feature extraction and comparison with multiple color spaces 
 
 **Configuration:**
 ```python
-from PureCV.molt.histogram_extractor import HistogramExtractor
+from tracking.trackers.molt.histogram_extractor import HistogramExtractor
 
 # Default configuration
 extractor = HistogramExtractor()
