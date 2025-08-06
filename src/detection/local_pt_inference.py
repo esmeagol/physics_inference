@@ -9,9 +9,16 @@ import os
 from typing import Dict, List, Optional, Union, Any
 import numpy as np
 import cv2
+import torch
 from ultralytics import YOLO
 
 from .inference_runner import InferenceRunner
+
+try:
+    from rfdetr import RFDETRNano
+    RFDETR_AVAILABLE = True
+except ImportError:
+    RFDETR_AVAILABLE = False
 
 
 class LocalPT(InferenceRunner):
@@ -41,16 +48,19 @@ class LocalPT(InferenceRunner):
         self.model_path = model_path
         self.confidence = confidence
         self.iou = iou
-        
-        # Load the model
-        try:
-            self.model = YOLO(model_path)
-            print(f"Loaded model from {model_path}")
-        except Exception as e:
-            raise RuntimeError(f"Error loading model: {str(e)}")
-            
-        # Store model info
         self.model_name = os.path.basename(model_path)
+        
+        # Detect model type and load accordingly
+        if self._is_rfdetr_model(model_path):
+            self.model_type = 'rf-detr'
+            self.model = self._load_rfdetr_model(model_path)
+        else:
+            self.model_type = 'yolo'
+            try:
+                self.model = YOLO(model_path)
+                print(f"Loaded YOLO model from {model_path}")
+            except Exception as e:
+                raise RuntimeError(f"Error loading YOLO model: {str(e)}")
         
     def predict(self, 
                image: Union[str, np.ndarray], 
@@ -70,11 +80,12 @@ class LocalPT(InferenceRunner):
         iou = kwargs.get('iou', self.iou)
         
         try:
-            # Run inference
-            results = self.model(image, conf=conf, iou=iou, verbose=False)
-            
-            # Convert to standardized format
-            return self._convert_to_standard_format(results[0])
+            if self.model_type == 'rf-detr':
+                return self._predict_rfdetr(image, conf=conf)
+            else:
+                # Run YOLO inference
+                results = self.model(image, conf=conf, iou=iou, verbose=False)
+                return self._convert_to_standard_format(results[0])
             
         except Exception as e:
             raise RuntimeError(f"Error during inference: {str(e)}")
@@ -156,7 +167,7 @@ class LocalPT(InferenceRunner):
         return {
             'name': self.model_name,
             'type': 'pytorch',
-            'framework': 'ultralytics',
+            'framework': 'rf-detr' if self.model_type == 'rf-detr' else 'ultralytics',
             'path': self.model_path,
             'confidence': self.confidence,
             'iou': self.iou
@@ -203,6 +214,183 @@ class LocalPT(InferenceRunner):
             'image': {
                 'width': result.orig_shape[1],
                 'height': result.orig_shape[0]
+            },
+            'model': self.model_name
+        }
+        
+        return output
+
+    def _is_rfdetr_model(self, model_path: str) -> bool:
+        """
+        Check if the model is an RF-DETR model by inspecting checkpoint contents.
+        
+        Args:
+            model_path: Path to the model file
+            
+        Returns:
+            True if RF-DETR model, False otherwise
+        """
+        try:
+            checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+            
+            # Look for RF-DETR specific keys in state_dict
+            if isinstance(checkpoint, dict):
+                state_dict = checkpoint.get('model', checkpoint)
+                if isinstance(state_dict, dict):
+                    keys = list(state_dict.keys())
+                    # Check for transformer/decoder components typical of RF-DETR
+                    rfdetr_indicators = ['transformer', 'decoder', 'query_embed', 'class_embed', 'bbox_embed']
+                    return any(indicator in str(keys) for indicator in rfdetr_indicators)
+            
+            return False
+        except Exception:
+            return False
+
+    def _load_rfdetr_model(self, model_path: str) -> Any:
+        """
+        Load RF-DETR model using RFDETRNano.
+        
+        Args:
+            model_path: Path to the RF-DETR model file
+            
+        Returns:
+            Loaded RF-DETR model
+        """
+        if not RFDETR_AVAILABLE:
+            raise ImportError("RF-DETR package not available. Install with: pip install rfdetr")
+        
+        try:
+            # First try with pretrain_weights
+            model = RFDETRNano(pretrain_weights=model_path)
+            print(f"Loaded RF-DETR model from {model_path}")
+            return model
+        except Exception as e:
+            print(f"Failed to load RF-DETR with pretrain_weights: {e}")
+            # Try alternative loading approach
+            try:
+                # Load checkpoint manually and create model without pretrained weights
+                checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+                
+                # Determine number of classes from checkpoint
+                if 'model' in checkpoint:
+                    state_dict = checkpoint['model']
+                    # Look for class embedding to determine num_classes
+                    for key, tensor in state_dict.items():
+                        if 'class_embed' in key and tensor.dim() == 2:
+                            num_classes = tensor.shape[0]
+                            break
+                    else:
+                        num_classes = 90  # Default COCO classes
+                else:
+                    num_classes = 90
+                
+                # Create model with correct number of classes
+                model = RFDETRNano(num_classes=num_classes)
+                print(f"Created RF-DETR model with {num_classes} classes")
+                
+                # Try to load state dict with strict=False
+                if hasattr(model, 'model') and hasattr(model.model, 'load_state_dict'):
+                    model.model.load_state_dict(state_dict, strict=False)
+                    print(f"Loaded RF-DETR model from {model_path} (manual loading)")
+                
+                return model
+            except Exception as e2:
+                raise RuntimeError(f"Error loading RF-DETR model: {str(e2)}")
+
+    def _predict_rfdetr(self, image: Union[str, np.ndarray], conf: float = 0.5) -> Dict[str, Any]:
+        """
+        Run inference using RF-DETR model.
+        
+        Args:
+            image: Input image (file path or numpy array)
+            conf: Confidence threshold
+            
+        Returns:
+            Dictionary with standardized prediction format
+        """
+        # Load image if it's a file path
+        if isinstance(image, str):
+            img = cv2.imread(image)
+            if img is None:
+                raise ValueError(f"Could not load image: {image}")
+        else:
+            img = image.copy()
+        
+        # Get image dimensions
+        img_height, img_width = img.shape[:2]
+        
+        # Run RF-DETR inference - use predict method if available
+        if hasattr(self.model, 'predict'):
+            results = self.model.predict(img)
+        else:
+            # Fallback to direct call
+            results = self.model(img)
+        
+        # Convert to standard format
+        return self._convert_rfdetr_to_standard_format(results, img_width, img_height, conf)
+
+    def _convert_rfdetr_to_standard_format(self, results: Any, img_width: int, img_height: int, conf_threshold: float) -> Dict[str, Any]:
+        """
+        Convert RF-DETR results to standardized format.
+        
+        Args:
+            results: RF-DETR detection results (supervision.Detections format)
+            img_width: Original image width
+            img_height: Original image height
+            conf_threshold: Confidence threshold for filtering
+            
+        Returns:
+            Dictionary with standardized prediction format
+        """
+        predictions = []
+        
+        # Handle supervision.Detections format (RF-DETR output)
+        if hasattr(results, 'xyxy') and hasattr(results, 'confidence') and hasattr(results, 'class_id'):
+            boxes = results.xyxy
+            confidences = results.confidence
+            class_ids = results.class_id
+            
+            # Define class names mapping (based on snooker dataset)
+            class_names = {
+                1: 'white-ball',
+                37: 'red-ball', 
+                62: 'green-ball',
+                15: 'blue-ball',
+                72: 'yellow-ball',
+            }
+            
+            for i in range(len(boxes)):
+                score = float(confidences[i])
+                if score < conf_threshold:
+                    continue
+                    
+                # Convert box coordinates from xyxy to center format
+                x1, y1, x2, y2 = boxes[i].tolist()
+                cx = (x1 + x2) / 2
+                cy = (y1 + y2) / 2
+                w = x2 - x1
+                h = y2 - y1
+                
+                class_id = int(class_ids[i])
+                class_name = class_names.get(class_id, f'class_{class_id}')
+                
+                pred = {
+                    'x': cx,
+                    'y': cy,
+                    'width': w,
+                    'height': h,
+                    'confidence': score,
+                    'class': class_name,
+                    'class_id': class_id
+                }
+                predictions.append(pred)
+        
+        # Create standardized output format
+        output = {
+            'predictions': predictions,
+            'image': {
+                'width': img_width,
+                'height': img_height
             },
             'model': self.model_name
         }
