@@ -438,7 +438,9 @@ class MOLTUnifiedTest:
             return False
             
         print("Initializing MOLT tracker with averaged detections...")
-        init_success = self.molt_tracker.init(first_frame, averaged_detections)
+        # Ensure frame is the correct numpy array type
+        first_frame_array = np.asarray(first_frame, dtype=np.uint8)
+        init_success = self.molt_tracker.init(first_frame_array, averaged_detections)
         if not init_success:
             print("Error: Failed to initialize MOLT tracker")
             return False
@@ -460,7 +462,9 @@ class MOLTUnifiedTest:
             track_start = time.time()
                 
             # Update tracker
-            tracks = self.molt_tracker.update(frame)
+            # Ensure frame is the correct numpy array type
+            frame_array = np.asarray(frame, dtype=np.uint8)
+            tracks = self.molt_tracker.update(frame_array)
                 
             # Track timing
             track_time = time.time() - track_start
