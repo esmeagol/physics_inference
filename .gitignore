@@ -45,7 +45,6 @@ logs/
 assets/
 
 # Model files
-models/
 *.pt
 *.pth
 *.h5
