@@ -19,13 +19,41 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root.parent))
 
 from src.detection.local_pt_inference import LocalPT
+from collections import Counter
 
 # Default values
 DEFAULT_CONFIG = {
-    'model_path': str(Path(project_root.parent) / "trained_models" / "ar-snkr_objd-lolhi-4-yolov11-medium-weights.pt"),
+    'model_path': "/Users/abhinavrai/Playground/snooker_data/trained models/ar-snkr_objd-lolhi-4-yolov11-weights.pt",
     'confidence': float(os.getenv('CONFIDENCE_THRESHOLD', '0.5')),
     'iou': float(os.getenv('IOU_THRESHOLD', '0.5')),
 }
+
+def generate_summary_text(predictions: Dict[str, Any]) -> str:
+    """
+    Generate a summary text string from predictions.
+    
+    Args:
+        predictions: Dictionary containing prediction results
+        
+    Returns:
+        Formatted summary string
+    """
+    pred_list = predictions.get('predictions', [])
+    
+    if not pred_list:
+        return "No objects detected"
+    
+    # Count total objects
+    total_count = len(pred_list)
+    
+    # Count objects by class
+    class_counts = Counter(pred['class'] for pred in pred_list)
+    
+    # Format class counts
+    class_parts = [f"{class_name}: {count}" for class_name, count in sorted(class_counts.items())]
+    class_str = ", ".join(class_parts)
+    
+    return f"Total: {total_count} ({class_str})"
 
 def process_video(
     input_video_path: str,
@@ -127,6 +155,37 @@ def process_video(
                 # Create a copy of the frame for annotations
                 annotated_frame = frame.copy()
                 
+                # Generate and draw summary text at the top of the frame
+                summary_text = generate_summary_text(predictions)
+                
+                # Draw text with black outline for visibility
+                text_position = (10, 30)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.7
+                thickness = 2
+                
+                # Draw black outline
+                cv2.putText(
+                    annotated_frame,
+                    summary_text,
+                    text_position,
+                    font,
+                    font_scale,
+                    (0, 0, 0),  # Black color for outline
+                    thickness + 1
+                )
+                
+                # Draw white text
+                cv2.putText(
+                    annotated_frame,
+                    summary_text,
+                    text_position,
+                    font,
+                    font_scale,
+                    (255, 255, 255),  # White color for text
+                    thickness
+                )
+                
                 # Draw bounding boxes for each prediction
                 for pred in predictions.get('predictions', []):
                     # Extract prediction details
@@ -147,7 +206,7 @@ def process_video(
                     cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     
                     # Draw label with confidence
-                    label = f"{class_name}: {confidence:.2f}"
+                    label = f"{class_name}"
                     cv2.putText(
                         annotated_frame, 
                         label, 
