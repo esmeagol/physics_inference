@@ -129,9 +129,9 @@ def main() -> None:
     
     # Configuration with absolute paths
     # Video is in the root assets directory
-    video_path = str(project_root.parent / "assets" / "test_videos" / "video_1.mp4")
+    video_path = str(project_root.parent / "assets" / "test_videos" / "hires_video_cropped_60s.mp4")
     # Model is in the root trained_models directory
-    model_path = str(project_root.parent / "trained_models" / "ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt")
+    model_path = str(project_root.parent / "trained_models" / "ar-snkr_objd-lolhi-4-yolov11-medium-weights.pt")
     output_json = "detection_results_bbox.json"
     max_frames = 5  # Process only first 5 frames
     confidence = 0.5
