@@ -202,7 +202,7 @@
   - [x] 12.1 Implement comprehensive MOLT tracker test with real video file
     - Use real video file /private/tmp/tracker_benchmark_results/SV-ByteTrack_tracking.mp4
     - Integrate with YOLOv11 model for initial detections (first 10 frames)
-    - Use default model: trained_models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt
+    - Use default model: trained models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt
     - Average detections from initial frames to establish stable object positions
     - Track objects through MOLT algorithm after initial detection phase
     - _Requirements: 1.6, 2.1, 4.2, 4.3_

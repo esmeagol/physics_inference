@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument(
         "--model",
         type=str,
-        default="trained_models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt",
+        default="/Users/abhinavrai/Playground/snooker_data/trained models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt",
         help="Path to model weights (.pt file)"
     )
     parser.add_argument(

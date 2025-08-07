@@ -35,7 +35,7 @@ Set up `.env` file:
 ROBOFLOW_API_KEY=your_key
 ROBOFLOW_WORKSPACE=workspace
 ROBOFLOW_PROJECT=project
-DEFAULT_YOLO_MODEL_PATH=trained_models/best.pt
+DEFAULT_YOLO_MODEL_PATH=trained models/best.pt
 ```
 
 **Output Format**: All detectors return standardized dictionaries:

@@ -1,12 +1,12 @@
 ## compare_local_models.py
 
-python scripts/detection/compare_local_models.py --model1 /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-2-yolov11-weights.pt --model2 /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-3-roboflow-weights.pt --input-dir /Users/abhinavrai/Playground/snooker/test_images --output-dir /tmp/compare_local_inference/segm-egvem-2-yolov11_vs_segm-egvem-3-roboflow
-Loading model 1: /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-2-yolov11-weights.pt
-Loading model 2: /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-3-roboflow-weights.pt
+python scripts/detection/compare_local_models.py --model1 /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-2-yolov11-weights.pt --model2 /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-3-roboflow-weights.pt --input-dir /Users/abhinavrai/Playground/snooker/test_images --output-dir /tmp/compare_local_inference/segm-egvem-2-yolov11_vs_segm-egvem-3-roboflow
+Loading model 1: /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-2-yolov11-weights.pt
+Loading model 2: /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-3-roboflow-weights.pt
 Loading model 1: snkr_segm-egvem-2-yolov11-weights.pt
-Loaded model from /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-2-yolov11-weights.pt
+Loaded model from /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-2-yolov11-weights.pt
 Loading model 2: snkr_segm-egvem-3-roboflow-weights.pt
-Loaded model from /Users/abhinavrai/Playground/physics_inference/trained_models/snkr_segm-egvem-3-roboflow-weights.pt
+Loaded model from /Users/abhinavrai/Playground/snooker_data/trained models/snkr_segm-egvem-3-roboflow-weights.pt
 Found 7 images to process
 Processing images: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 7/7 [00:01<00:00,  4.16it/s]
 

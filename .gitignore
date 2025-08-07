@@ -51,9 +51,6 @@ assets/
 *.tflite
 *.onnx
 
-# Assets
-assets/
-
 # Temporary files
 temp/
 *.tmp
@@ -67,4 +64,4 @@ data/
 *.h5
 output/
 test_images/
-trained_models/
+trained\ models/
