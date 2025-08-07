@@ -142,7 +142,7 @@
 
   - [x] 9.1 Update PureCV package structure and imports
 
-    - Add molt_tracker module import to PureCV/**init**.py
+    - Add molt_tracker module import to trackers/**init**.py
     - Export MOLTTracker class in package **all** list
     - Update package version and documentation
     - _Requirements: 5.2, 5.3_
@@ -159,7 +159,7 @@
   - [x] 10.1 Reorganize code into modular package structure
 
     - Split monolithic molt_tracker.py into focused modules
-    - Create PureCV/molt/ package with clear component separation
+    - Create trackers/molt/ package with clear component separation
     - Implement proper module imports and exports
     - Maintain backward compatibility with existing API
     - _Requirements: Maintainability, Testability, Reusability_
@@ -202,7 +202,7 @@
   - [x] 12.1 Implement comprehensive MOLT tracker test with real video file
     - Use real video file /private/tmp/tracker_benchmark_results/SV-ByteTrack_tracking.mp4
     - Integrate with YOLOv11 model for initial detections (first 10 frames)
-    - Use default model: CVModelInference/trained_models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt
+    - Use default model: trained_models/ar-snkr_objd-lolhi-3-yolov11-medium-weights.pt
     - Average detections from initial frames to establish stable object positions
     - Track objects through MOLT algorithm after initial detection phase
     - _Requirements: 1.6, 2.1, 4.2, 4.3_

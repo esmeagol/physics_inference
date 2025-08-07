@@ -637,4 +637,4 @@ class MultiCameraMOLT:
         return all_tracks
 ```
 
-This comprehensive usage guide covers all aspects of using the MOLT tracker effectively. For additional help or advanced use cases, refer to the example scripts in the `PureCV/examples/` directory.
+This comprehensive usage guide covers all aspects of using the MOLT tracker effectively. For additional help or advanced use cases, refer to the example scripts.

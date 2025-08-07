@@ -107,7 +107,13 @@ class TestSuiteRunner:
                     # Discover and run tests
                     loader = unittest.TestLoader()
                     suite = loader.discover(str(test_dir), pattern="test_*.py")
-                    runner = unittest.TextTestRunner(verbosity=1, stream=open(os.devnull, 'w'))
+                    
+                    # Use a StringIO to capture the test output
+                    from io import StringIO
+                    output = StringIO()
+                    
+                    # Run tests with output captured
+                    runner = unittest.TextTestRunner(verbosity=2, stream=output)
                     result = runner.run(suite)
                     
                     tests_run = result.testsRun
@@ -122,6 +128,12 @@ class TestSuiteRunner:
                         print(f"   ✅ {test_dir.name}: {tests_run} tests passed")
                     else:
                         print(f"   ❌ {test_dir.name}: {failures} failures, {errors} errors out of {tests_run} tests")
+                        # Print the test output to show which tests failed
+                        print("\n" + "="*50)
+                        print(f"Test output for {test_dir.name}:")
+                        print("-"*50)
+                        print(output.getvalue())
+                        print("="*50 + "\n")
                         success = False
                         
                 except Exception as e:

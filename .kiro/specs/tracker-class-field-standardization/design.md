@@ -18,8 +18,6 @@ Currently, the DeepSORT tracker stores class info as `'class_name'` internally b
 
 ### DeepSORT Tracker Changes
 
-**File:** `CVModelInference/trackers/deepsort_tracker.py`
-
 The `_update_trackers` method currently copies class info from internal `class_info` dict to track results. We need to ensure it uses `'class'` as the key name.
 
 **Current behavior:**
@@ -41,10 +39,6 @@ for key, value in tracker['class_info'].items():
 ```
 
 ### Analysis Tools Changes
-
-**Files:**
-- `CVModelInference/scripts/compare_trackers.py`
-- `CVModelInference/tracker_benchmark.py`
 
 Remove all fallback logic that tries `'class_name'` after `'class'`. Update to only use `'class'` field.
 

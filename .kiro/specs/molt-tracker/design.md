@@ -419,20 +419,6 @@ Manages ball counting and verification logic specific to snooker with comprehens
 
 ## Testing Strategy
 
-### Test Organization
-
-```
-PureCV/tests/                    # Organized test suite
-├── test_config.py              # Configuration system tests
-├── test_histogram_extractor.py # Histogram functionality tests
-└── test_integration.py         # Component integration tests
-
-PureCV/examples/                 # Usage examples
-└── basic_usage.py              # Comprehensive usage demonstration
-
-PureCV/run_all_tests.py         # Comprehensive test runner
-```
-
 ### Unit Tests
 - **MOLTTrackerConfig** (`test_config.py`): Configuration validation, presets, serialization
 - **HistogramExtractor** (`test_histogram_extractor.py`): Distance metrics, normalization, color spaces, edge cases

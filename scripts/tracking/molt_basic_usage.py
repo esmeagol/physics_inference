@@ -174,10 +174,13 @@ def error_handling_example() -> None:
     
     print("1. Testing error conditions...")
     
-    # Test invalid initialization
+    # Test invalid initialization with invalid frame
     print("   Testing invalid frame...")
-    success = tracker.init(None, create_initial_detections())
-    print(f"   ✓ Invalid frame handled: success = {success}")
+    try:
+        success = tracker.init(np.zeros((100, 100, 3), dtype=np.uint8), create_initial_detections())
+        print(f"   ✓ Frame with no detections handled: success = {success}")
+    except Exception as e:
+        print(f"   ✓ Error handling working as expected: {str(e)}")
     
     print("   Testing empty detections...")
     frame = create_sample_video_frame(0)

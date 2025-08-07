@@ -61,7 +61,7 @@ vis_frame = tracker.visualize(frame, tracks)
 ## Structure
 
 ```
-PureCV/
+trackers/
 ├── molt/                    # MOLT tracker package
 │   ├── __init__.py         # Package exports
 │   ├── tracker.py          # Main MOLTTracker class
@@ -80,23 +80,6 @@ PureCV/
 ├── run_all_tests.py        # Comprehensive test runner
 ├── table_detection.py      # Table detection utilities
 └── README.md               # This file
-```
-
-## Testing
-
-Run the comprehensive test suite:
-
-```bash
-# Run all tests
-python PureCV/run_all_tests.py
-
-# Run specific test suites
-python PureCV/tests/test_config.py
-python PureCV/tests/test_histogram_extractor.py
-python PureCV/tests/test_integration.py
-
-# Run examples
-python PureCV/examples/basic_usage.py
 ```
 
 ## Quality Metrics
