@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 from .tracker import Tracker
-from src.detection.inference_runner import InferenceRunner
+from ..detection.inference_runner import InferenceRunner
 from .ground_truth_evaluator import GroundTruthEvaluator, EvaluationSummary
 from .ground_truth_visualizer import GroundTruthVisualizer, VisualizationConfig
 

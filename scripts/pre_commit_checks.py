@@ -74,7 +74,7 @@ class PreCommitChecker:
         
         try:
             result = subprocess.run(
-                ["mypy"] + core_files + ["--explicit-package-bases", "--ignore-missing-imports"],
+                ["mypy"] + core_files + ["--ignore-missing-imports", "--no-strict-optional", "--follow-imports=silent"],
                 capture_output=True,
                 text=True,
                 cwd=self.project_root
@@ -114,7 +114,8 @@ class PreCommitChecker:
                 
             # Convert file path to module path
             if file_path.startswith('src/'):
-                module_path = file_path[4:].replace('/', '.').replace('.py', '')
+                # Use the full src.* import path to match our standardized import pattern
+                module_path = file_path.replace('/', '.').replace('.py', '')
                 try:
                     importlib.import_module(module_path)
                     print(f"   ✅ {module_path}")

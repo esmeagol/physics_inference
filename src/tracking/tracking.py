@@ -12,8 +12,8 @@ import cv2
 import supervision as sv
 from ultralytics import YOLO
 
-from src.detection.inference_runner import InferenceRunner
-from src.detection.local_pt_inference import LocalPT
+from ..detection.inference_runner import InferenceRunner
+from ..detection.local_pt_inference import LocalPT
 
 
 class Tracker:
