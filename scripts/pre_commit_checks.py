@@ -74,7 +74,7 @@ class PreCommitChecker:
         
         try:
             result = subprocess.run(
-                ["mypy"] + core_files + ["--ignore-missing-imports", "--no-strict-optional", "--follow-imports=silent"],
+                ["mypy"] + core_files + ["--explicit-package-bases", "--ignore-missing-imports", "--no-strict-optional", "--follow-imports=silent"],
                 capture_output=True,
                 text=True,
                 cwd=self.project_root
