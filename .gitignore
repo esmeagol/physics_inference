@@ -33,6 +33,8 @@ ENV/
 *.swp
 *.swo
 .DS_Store
+.cursorindexingignore
+.specstory/
 
 # Logs
 logs/

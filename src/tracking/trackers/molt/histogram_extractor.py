@@ -181,7 +181,8 @@ class HistogramExtractor:
         hist_sum = np.sum(hist)
         if hist_sum == 0:
             # Return uniform distribution if histogram is empty
-            return np.ones_like(hist, dtype=np.float32) / hist.size
+            # Ensure float32 dtype to satisfy typing and avoid float64 upcast
+            return (np.ones_like(hist, dtype=np.float32) / np.float32(hist.size)).astype(np.float32)
         
         # Normalize to unit sum
         return (hist / hist_sum).astype(np.float32)
