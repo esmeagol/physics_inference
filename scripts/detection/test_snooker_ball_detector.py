@@ -11,6 +11,7 @@ import sys
 import cv2
 import argparse
 import logging
+import json
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,7 @@ def setup_logging() -> None:
     )
 
 
-def test_snooker_ball_detector() -> bool:
+def test_snooker_ball_detector(output_jsonl: str | None = None) -> bool:
     """Test the SnookerBallDetector with two models."""
     
     # Model paths
@@ -91,10 +92,14 @@ def test_snooker_ball_detector() -> bool:
     
     print(f"Video properties: {width}x{height}, {fps} FPS, {total_frames} frames")
     
-    # Setup output video writer
+    # Setup outputs
     output_path = "assets/output/snooker_detector_output.mp4"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    jsonl_path = output_jsonl or "assets/output/snooker_detections.jsonl"
+    os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # type: ignore[attr-defined]
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    f_jsonl = open(jsonl_path, "w")
     
     frame_count = 0
     process_every_n_frames = 1  # Process every 5th frame for speed
@@ -131,6 +136,20 @@ def test_snooker_ball_detector() -> bool:
                     
                     # Write annotated frame
                     out.write(annotated_frame)
+
+                    # Write JSONL record for this frame
+                    try:
+                        record = {
+                            "frame": frame_count,
+                            "time": frame_count / max(1, fps),
+                            "predictions": results.get("predictions", []),
+                            "image": results.get("image", {"width": width, "height": height}),
+                            "sanitization_info": results.get("sanitization_info", {}),
+                            "model": results.get("model", "SnookerBallDetector"),
+                        }
+                        f_jsonl.write(json.dumps(record) + "\n")
+                    except Exception as e:
+                        print(f"Warning: failed to write JSONL for frame {frame_count}: {e}")
                     
                 except Exception as e:
                     print(f"Error processing frame {frame_count}: {e}")
@@ -141,9 +160,9 @@ def test_snooker_ball_detector() -> bool:
                 out.write(frame)
             
             # Break early for testing (process first 100 frames)
-            if frame_count >= 100:
-                print("Stopping after 100 frames for testing")
-                break
+            # if frame_count >= 100:
+            #     print("Stopping after 100 frames for testing")
+            #     break
     
     except KeyboardInterrupt:
         print("Processing interrupted by user")
@@ -151,15 +170,20 @@ def test_snooker_ball_detector() -> bool:
     finally:
         cap.release()
         out.release()
+        try:
+            f_jsonl.close()
+        except Exception:
+            pass
         cv2.destroyAllWindows()
     
     print(f"Output video saved to: {output_path}")
+    print(f"Detections JSONL saved to: {jsonl_path}")
     print(f"Log file saved to: assets/output/snooker_detector_test.log")
     
     return True
 
 
-def test_single_frame() -> bool:
+def test_single_frame(output_jsonl: str | None = None) -> bool:
     """Test the detector on a single frame for debugging."""
     
     model1_path = "/Users/abhinavrai/Playground/snooker_data/trained models/snookers-gkqap-yolov11-medium-weights.pt"
@@ -208,6 +232,24 @@ def test_single_frame() -> bool:
         vis1 = detector1.visualize_predictions(frame, result1, "detector1_output.jpg")
         vis2 = detector2.visualize_predictions(frame, result2, "detector2_output.jpg")
         vis_combined = snooker_detector.visualize_predictions(frame, combined_result, "combined_output.jpg")
+
+        # Write single JSONL record if requested
+        if output_jsonl:
+            try:
+                os.makedirs(os.path.dirname(output_jsonl), exist_ok=True)
+                with open(output_jsonl, "w") as f:
+                    record = {
+                        "frame": 1,
+                        "time": 0.0,
+                        "predictions": combined_result.get("predictions", []),
+                        "image": combined_result.get("image", {}),
+                        "sanitization_info": combined_result.get("sanitization_info", {}),
+                        "model": combined_result.get("model", "SnookerBallDetector"),
+                    }
+                    f.write(json.dumps(record) + "\n")
+                print(f"Detections JSONL saved to: {output_jsonl}")
+            except Exception as e:
+                print(f"Warning: failed to write JSONL: {e}")
         
         print("Visualizations saved:")
         print("  detector1_output.jpg")
@@ -230,6 +272,8 @@ def main() -> None:
                        help='Test on single frame only')
     parser.add_argument('--verbose', action='store_true',
                        help='Enable verbose logging')
+    parser.add_argument('--output-jsonl', type=str, default='assets/output/snooker_detections.jsonl',
+                        help='Path to write JSONL detections')
     
     args = parser.parse_args()
     
@@ -242,9 +286,9 @@ def main() -> None:
     print("=" * 50)
     
     if args.single_frame:
-        success = test_single_frame()
+        success = test_single_frame(args.output_jsonl)
     else:
-        success = test_snooker_ball_detector()
+        success = test_snooker_ball_detector(args.output_jsonl)
     
     if success:
         print("Test completed successfully!")
