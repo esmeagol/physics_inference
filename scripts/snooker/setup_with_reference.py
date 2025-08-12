@@ -174,7 +174,7 @@ def setup_transformation_with_reference(video_path: str,
             
             # Create our standard table for comparison
             generator = SnookerTableGenerator()
-            standard_table = generator.create_base_table()
+            standard_table = generator.load_base_table_image()
             standard_path = os.path.join(output_dir, "standard_table.png")
             cv2.imwrite(standard_path, standard_table)
             

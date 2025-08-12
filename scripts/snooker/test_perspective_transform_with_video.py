@@ -64,7 +64,7 @@ def test_perspective_with_video(video_path: str, output_dir: str = "assets/outpu
     
     # Create reference table for comparison
     generator = SnookerTableGenerator()
-    reference_table = generator.create_base_table()
+    reference_table = generator.load_base_table_image()
     reference_path = os.path.join(output_dir, "reference_table.png")
     cv2.imwrite(reference_path, reference_table)
     print(f"Reference table saved to: {reference_path}")

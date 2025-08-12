@@ -12,7 +12,15 @@ from typing import List, Tuple, Optional, Dict, Any
 import logging
 from numpy.typing import NDArray
 
-from .table.table_constants import TABLE_LEFT, TABLE_TOP, TABLE_RIGHT, TABLE_BOTTOM, TABLE_WIDTH, TABLE_HEIGHT
+from .table.table_constants import (
+    PLAY_AREA_TOP_LEFT_X, PLAY_AREA_TOP_LEFT_Y,
+    PLAY_AREA_TOP_RIGHT_X, PLAY_AREA_TOP_RIGHT_Y,
+    PLAY_AREA_BOTTOM_RIGHT_X, PLAY_AREA_BOTTOM_RIGHT_Y,
+    PLAY_AREA_BOTTOM_LEFT_X, PLAY_AREA_BOTTOM_LEFT_Y,
+    PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT,
+    BAULK_LINE_Y,
+    MIDDLE_LINE_X,
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -108,11 +116,11 @@ class PointSelector:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
         cv2.setMouseCallback(self.window_name, self.mouse_callback)
         
-        print(f"\nSelect {num_points} table corner points in clockwise order:")
-        print("1. Top-left corner of the table")
-        print("2. Top-right corner of the table") 
-        print("3. Bottom-right corner of the table")
-        print("4. Bottom-left corner of the table")
+        print(f"\nSelect {num_points} playing area corner points in clockwise order:")
+        print("1. Top-left corner of the playing area (green surface)")
+        print("2. Top-right corner of the playing area (green surface)") 
+        print("3. Bottom-right corner of the playing area (green surface)")
+        print("4. Bottom-left corner of the playing area (green surface)")
         print("Press 'r' to reset, 'q' to quit, ENTER to confirm selection")
         
         if self.display_image is not None:
@@ -152,7 +160,7 @@ class PointSelector:
 
 class PerspectiveTransformer:
     """
-    Handles perspective transformation of snooker table from arbitrary camera angles
+    Handles perspective transformation of snooker table playing area from arbitrary camera angles
     to standardized top-down view using manual point selection.
     """
     
@@ -161,7 +169,7 @@ class PerspectiveTransformer:
         Initialize the perspective transformer.
         
         Args:
-            transformation_points: Optional pre-defined transformation points
+            transformation_points: Optional pre-defined transformation points for playing area corners
         """
         self.transformation_matrix: Optional[NDArray[np.floating[Any]]] = None
         self.source_points: Optional[List[Tuple[int, int]]] = transformation_points
@@ -173,16 +181,17 @@ class PerspectiveTransformer:
     
     def _get_target_points(self) -> List[Tuple[int, int]]:
         """
-        Get the target points for the standardized table view.
+        Get the target points for the standardized playing area view.
         
         Returns:
-            List of target points in clockwise order
+            List of target points in clockwise order for the playing area
+            (relative to playing area, starting from 0,0)
         """
         return [
-            (0, 0),                       # Top-left
-            (TABLE_WIDTH, 0),             # Top-right  
-            (TABLE_WIDTH, TABLE_HEIGHT),  # Bottom-right
-            (0, TABLE_HEIGHT)             # Bottom-left
+            (0, 0),                                    # Top-left
+            (PLAY_AREA_WIDTH, 0),                      # Top-right  
+            (PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT),       # Bottom-right
+            (0, PLAY_AREA_HEIGHT)                      # Bottom-left
         ]
     
     def setup_transformation(self, frame: NDArray[np.uint8]) -> bool:
@@ -190,22 +199,22 @@ class PerspectiveTransformer:
         Setup transformation using manual point selection on the provided frame.
         
         Args:
-            frame: Input frame for point selection
+            frame: Input frame for playing area corner selection
             
         Returns:
             True if transformation setup was successful, False otherwise
         """
-        logger.info("Setting up perspective transformation with manual point selection")
+        logger.info("Setting up perspective transformation with manual playing area point selection")
         
         # Select source points manually
         source_points = self.point_selector.select_points(frame, num_points=4)
         
         if len(source_points) != 4:
-            logger.error("Failed to select 4 corner points")
+            logger.error("Failed to select 4 playing area corner points")
             return False
         
         self.source_points = source_points
-        logger.info(f"Source points selected: {self.source_points}")
+        logger.info(f"Playing area source points selected: {self.source_points}")
         
         # Calculate transformation matrix
         return self._calculate_transformation_matrix()
@@ -241,27 +250,27 @@ class PerspectiveTransformer:
     
     def transform_frame(self, frame: NDArray[np.uint8]) -> Optional[NDArray[np.uint8]]:
         """
-        Transform frame to top-down table view using established transformation matrix.
+        Transform frame to top-down playing area view using established transformation matrix.
         
         Args:
             frame: Input frame to transform
             
         Returns:
-            Transformed frame cropped to table area or None if transformation fails
+            Transformed frame cropped to playing area or None if transformation fails
         """
         if self.transformation_matrix is None:
             logger.error("Transformation matrix not initialized")
             return None
         
         try:
-            # Apply perspective transformation to table area size
+            # Apply perspective transformation to playing area size
             transformed = cv2.warpPerspective(
                 frame, 
                 self.transformation_matrix, 
-                (TABLE_WIDTH, TABLE_HEIGHT)
+                (PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT)
             )
             
-            # Return the transformed image (already at table dimensions)
+            # Return the transformed image (already at playing area dimensions)
             return transformed.astype(np.uint8)
             
         except Exception as e:
@@ -413,3 +422,53 @@ class PerspectiveTransformer:
             logger.info(f"Transformation visualization saved to: {output_path}")
         
         return combined
+
+    def overlay_transformed_on_base_table(self, transformed_image: NDArray[np.uint8], base_table_image: NDArray[np.uint8]) -> NDArray[np.uint8]:
+        """
+        Overlay the transformed playing area image onto the base table image.
+        
+        Args:
+            transformed_image: Transformed playing area image (should be PLAY_AREA_WIDTH x PLAY_AREA_HEIGHT)
+            base_table_image: Base table image to overlay onto
+            
+        Returns:
+            Composite image with transformed playing area overlaid on base table
+        """
+        if transformed_image is None:
+            logger.error("Transformed image is None")
+            return base_table_image
+        
+        # Check if transformed image has correct dimensions
+        if transformed_image.shape[1] != PLAY_AREA_WIDTH or transformed_image.shape[0] != PLAY_AREA_HEIGHT:
+            logger.error(f"Transformed image dimensions {transformed_image.shape[1]}x{transformed_image.shape[0]} "
+                        f"don't match expected playing area dimensions {PLAY_AREA_WIDTH}x{PLAY_AREA_HEIGHT}")
+            return base_table_image
+        
+        # Create a copy of the base table image
+        composite_image = base_table_image.copy()
+        
+        # Define the region where the transformed image should be placed
+        x1 = PLAY_AREA_TOP_LEFT_X
+        y1 = PLAY_AREA_TOP_LEFT_Y
+        x2 = PLAY_AREA_BOTTOM_RIGHT_X
+        y2 = PLAY_AREA_BOTTOM_RIGHT_Y
+        
+        # Check if the region fits within the base table image
+        base_height, base_width = base_table_image.shape[:2]
+        if x2 > base_width or y2 > base_height:
+            logger.error(f"Playing area region ({x1},{y1},{x2},{y2}) exceeds base table dimensions ({base_width}x{base_height})")
+            return base_table_image
+        
+        # Overlay the transformed image onto the base table
+        composite_image[y1:y2, x1:x2] = transformed_image
+        
+        # draw baulk line
+        cv2.line(composite_image, (PLAY_AREA_TOP_LEFT_X, BAULK_LINE_Y), (PLAY_AREA_BOTTOM_RIGHT_X, BAULK_LINE_Y), (0, 0, 255), 2)
+        
+        # draw middle line
+        cv2.line(composite_image, (MIDDLE_LINE_X, PLAY_AREA_TOP_LEFT_Y), (MIDDLE_LINE_X, PLAY_AREA_BOTTOM_RIGHT_Y), (0, 0, 255), 2)
+        
+        logger.info(f"Successfully overlaid transformed playing area onto base table at region ({x1},{y1},{x2},{y2})")
+        
+        return composite_image
+

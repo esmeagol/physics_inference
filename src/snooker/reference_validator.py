@@ -12,8 +12,9 @@ import logging
 from numpy.typing import NDArray
 
 from .table.table_constants import (
-    TABLE_WIDTH, TABLE_HEIGHT,
-    TABLE_LEFT, TABLE_TOP, TABLE_RIGHT, TABLE_BOTTOM,
+    IMAGE_WIDTH, IMAGE_HEIGHT,
+    PLAY_AREA_TOP_LEFT_X, PLAY_AREA_TOP_LEFT_Y, 
+    PLAY_AREA_BOTTOM_RIGHT_X, PLAY_AREA_BOTTOM_RIGHT_Y,
     BAULK_LINE_Y, MIDDLE_LINE_Y, MIDDLE_LINE_X,
     STANDARD_BALL_POSITIONS, BROWN_SPOT
 )
@@ -90,144 +91,40 @@ class ReferenceValidator:
     
     def validate_table_dimensions(self, transformed_image: NDArray[np.uint8]) -> Dict[str, Any]:
         """
-        Validate that the transformed image has correct table dimensions.
+        Validate that the transformed image has correct playing area dimensions.
         
         Args:
-            transformed_image: Perspective-transformed snooker table image (full or cropped)
+            transformed_image: Perspective-transformed playing area image
             
         Returns:
             Dictionary with validation metrics
         """
         height, width = transformed_image.shape[:2]
         
-        # All transformed images should now be table area dimensions
-        expected_width = TABLE_WIDTH
-        expected_height = TABLE_HEIGHT
-        
-        # Check if dimensions match expected values
-        width_ratio = width / expected_width
-        height_ratio = height / expected_height
-        
-        # Calculate aspect ratio
-        actual_aspect = width / height
-        expected_aspect = expected_width / expected_height
-        aspect_error = abs(actual_aspect - expected_aspect) / expected_aspect
+        # Transformed images should be playing area dimensions
+        expected_width = IMAGE_WIDTH
+        expected_height = IMAGE_HEIGHT
         
         validation_results = {
-            'width_ratio': width_ratio,
-            'height_ratio': height_ratio,
-            'aspect_ratio_error': aspect_error,
             'expected_dimensions': (expected_width, expected_height),
             'actual_dimensions': (width, height),
-            'dimensions_valid': (0.95 <= width_ratio <= 1.05 and 
-                               0.95 <= height_ratio <= 1.05 and 
-                               aspect_error < 0.05)
+            'dimensions_valid': (width == expected_width and height == expected_height)
         }
         
         logger.info(f"Dimension validation: {validation_results}")
         return validation_results
     
-    def detect_table_lines(self, image: NDArray[np.uint8]) -> Dict[str, List[Tuple[int, int, int, int]]]:
-        """
-        Detect horizontal and vertical lines in the table image.
-        
-        Args:
-            image: Input table image
-            
-        Returns:
-            Dictionary with detected lines
-        """
-        # Convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
-        # Apply edge detection
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        
-        # Detect lines using Hough transform
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, 
-                               minLineLength=100, maxLineGap=10)
-        
-        horizontal_lines = []
-        vertical_lines = []
-        
-        if lines is not None:
-            for line in lines:
-                # Extract coordinates from line array
-                line_array = np.asarray(line)
-                coords = line_array[0] if line_array.ndim > 1 else line_array
-                x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-                
-                # Calculate line angle
-                angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
-                
-                # Classify as horizontal or vertical
-                if abs(angle) < 10 or abs(angle) > 170:  # Horizontal
-                    horizontal_lines.append((x1, y1, x2, y2))
-                elif 80 < abs(angle) < 100:  # Vertical
-                    vertical_lines.append((x1, y1, x2, y2))
-        
-        return {
-            'horizontal_lines': horizontal_lines,
-            'vertical_lines': vertical_lines
-        }
-    
-    def validate_baulk_line_position(self, transformed_image: NDArray[np.uint8]) -> Dict[str, Any]:
-        """
-        Validate the position of the baulk line in the transformed image.
-        
-        Args:
-            transformed_image: Perspective-transformed table image
-            
-        Returns:
-            Dictionary with baulk line validation results
-        """
-        lines = self.detect_table_lines(transformed_image)
-        horizontal_lines = lines['horizontal_lines']
-        
-        # Expected baulk line position
-        expected_y = BAULK_LINE_Y
-        
-        # Find the horizontal line closest to expected baulk line position
-        best_match = None
-        min_distance = float('inf')
-        
-        for line in horizontal_lines:
-            x1, y1, x2, y2 = line
-            line_y = (y1 + y2) / 2
-            
-            # Check if line spans most of the table width
-            line_length = abs(x2 - x1)
-            if line_length > TABLE_WIDTH * 0.7:  # At least 70% of table width
-                distance = abs(line_y - expected_y)
-                if distance < min_distance:
-                    min_distance = distance
-                    best_match = line
-        
-        validation_results = {
-            'baulk_line_found': best_match is not None,
-            'position_error': min_distance if best_match else float('inf'),
-            'position_valid': min_distance < 50 if best_match else False
-        }
-        
-        if best_match:
-            x1, y1, x2, y2 = best_match
-            validation_results['detected_position'] = (y1 + y2) / 2
-            validation_results['expected_position'] = expected_y
-        
-        logger.info(f"Baulk line validation: {validation_results}")
-        return validation_results
-    
     def validate_table_color(self, transformed_image: NDArray[np.uint8]) -> Dict[str, Any]:
         """
-        Validate that the table has the expected green color.
+        Validate that the playing area has the expected green color.
         
         Args:
-            transformed_image: Perspective-transformed table image (full or cropped)
+            transformed_image: Perspective-transformed playing area image
             
         Returns:
             Dictionary with color validation results
         """
-        # All transformed images are now table area only
+        # Transformed images are now playing area only
         playing_area = transformed_image
         
         # Convert to HSV for better color analysis
@@ -259,10 +156,10 @@ class ReferenceValidator:
     
     def create_validation_report(self, transformed_image: NDArray[np.uint8]) -> Dict[str, Any]:
         """
-        Create a comprehensive validation report for the transformed image.
+        Create a comprehensive validation report for the transformed playing area image.
         
         Args:
-            transformed_image: Perspective-transformed table image
+            transformed_image: Perspective-transformed playing area image
             
         Returns:
             Dictionary with complete validation results
@@ -274,20 +171,17 @@ class ReferenceValidator:
         
         # Run all validations
         report['dimensions'] = self.validate_table_dimensions(transformed_image)
-        report['baulk_line'] = self.validate_baulk_line_position(transformed_image)
         report['color'] = self.validate_table_color(transformed_image)
         
         # Calculate overall validation score
         dimensions_result = report['dimensions']
-        baulk_result = report['baulk_line']
         color_result = report['color']
         
-        if isinstance(dimensions_result, dict) and isinstance(baulk_result, dict) and isinstance(color_result, dict):
+        if isinstance(dimensions_result, dict) and isinstance(color_result, dict):
             dim_valid = bool(dimensions_result.get('dimensions_valid', False))
-            baulk_valid = bool(baulk_result.get('position_valid', False))
             color_valid = bool(color_result.get('color_valid', False))
             
-            validations = [dim_valid, baulk_valid, color_valid]
+            validations = [dim_valid, color_valid]
             
             overall_score = float(sum(validations)) / len(validations)
             report['overall_score'] = overall_score
@@ -307,7 +201,7 @@ class ReferenceValidator:
         Create a visualization of the validation results.
         
         Args:
-            transformed_image: Transformed table image
+            transformed_image: Transformed playing area image
             validation_report: Results from create_validation_report
             output_path: Optional path to save visualization
             
@@ -316,19 +210,19 @@ class ReferenceValidator:
         """
         vis_image = transformed_image.copy()
         
-        # Draw expected table boundaries
-        cv2.rectangle(vis_image, (TABLE_LEFT, TABLE_TOP), (TABLE_RIGHT, TABLE_BOTTOM), 
+        # Draw expected playing area boundaries (should be full image since it's already cropped)
+        cv2.rectangle(vis_image, (PLAY_AREA_TOP_LEFT_X, PLAY_AREA_TOP_LEFT_Y), (PLAY_AREA_BOTTOM_RIGHT_X, PLAY_AREA_BOTTOM_RIGHT_Y), 
                      (0, 255, 255), 3)  # Yellow rectangle
         
-        # Draw expected baulk line
-        cv2.line(vis_image, (TABLE_LEFT, BAULK_LINE_Y), (TABLE_RIGHT, BAULK_LINE_Y), 
+        # Draw expected baulk line (relative to playing area)
+        cv2.line(vis_image, (PLAY_AREA_TOP_LEFT_X, BAULK_LINE_Y), (PLAY_AREA_BOTTOM_RIGHT_X, BAULK_LINE_Y), 
                 (0, 255, 255), 2)  # Yellow line
         
-        # Draw middle line
-        cv2.line(vis_image, (MIDDLE_LINE_X, TABLE_TOP), (MIDDLE_LINE_X, TABLE_BOTTOM), 
+        # Draw middle line (relative to playing area)
+        cv2.line(vis_image, (MIDDLE_LINE_X, PLAY_AREA_TOP_LEFT_Y), (MIDDLE_LINE_X, PLAY_AREA_BOTTOM_RIGHT_Y), 
                 (0, 255, 255), 1)  # Yellow line
         
-        # Draw ball spots
+        # Draw ball spots (relative to playing area)
         for ball_color, position in STANDARD_BALL_POSITIONS.items():
             cv2.circle(vis_image, (position["x"], position["y"]), 10, (0, 255, 255), 2)
         
@@ -349,10 +243,6 @@ class ReferenceValidator:
                    (20, y_offset), font, 0.6, color, 1)
         
         y_offset += 30
-        cv2.putText(vis_image, f"Baulk Line: {'OK' if validation_report['baulk_line']['position_valid'] else 'FAIL'}", 
-                   (20, y_offset), font, 0.6, color, 1)
-        
-        y_offset += 30
         cv2.putText(vis_image, f"Color: {'OK' if validation_report['color']['color_valid'] else 'FAIL'}", 
                    (20, y_offset), font, 0.6, color, 1)
         
@@ -370,7 +260,7 @@ def validate_transformation(transformed_image: NDArray[np.uint8],
     Convenience function to validate a perspective transformation result.
     
     Args:
-        transformed_image: Perspective-transformed table image
+        transformed_image: Perspective-transformed playing area image
         reference_image_path: Optional path to reference image
         output_dir: Optional directory to save validation outputs
         

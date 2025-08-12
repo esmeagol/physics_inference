@@ -7,49 +7,73 @@ based on actual image analysis for accurate 2D reconstruction.
 
 from typing import Dict, Tuple, List
 
-# Snooker table dimensions based on actual image analysis (in pixels)
 # Origin (0, 0) is at top-left corner of the image
-IMAGE_WIDTH = 1830
-IMAGE_HEIGHT = 3660
+IMAGE_WIDTH = 2439
+IMAGE_HEIGHT = 4500
+
+# # Snooker table dimensions based on actual image analysis (in pixels)
+TABLE_WIDTH = 2240
+TABLE_HEIGHT = 4322
+TABLE_TOP_LEFT_X = 90
+TABLE_TOP_LEFT_Y = 78
+TABLE_BOTTOM_RIGHT_X = TABLE_TOP_LEFT_X + TABLE_WIDTH  # 2330
+TABLE_BOTTOM_RIGHT_Y = TABLE_TOP_LEFT_Y + TABLE_HEIGHT # 4400
+
+# Additional table boundary constants for reference_validator.py
+TABLE_LEFT = TABLE_TOP_LEFT_X
+TABLE_TOP = TABLE_TOP_LEFT_Y
+TABLE_RIGHT = TABLE_BOTTOM_RIGHT_X
+TABLE_BOTTOM = TABLE_BOTTOM_RIGHT_Y
 
 # Playing area dimensions (green surface inside cushions)
-TABLE_WIDTH = 1620
-TABLE_HEIGHT = 3450
-TABLE_LEFT = 105
-TABLE_TOP = 105
-TABLE_RIGHT = 1725
-TABLE_BOTTOM = 3555
+PLAY_AREA_WIDTH = 2022 # equivalent to 1778 mm on a standard table
+PLAY_AREA_HEIGHT = 4056 # equivalent to 3569 mm on a standard table
+PLAY_AREA_TOP_LEFT_X = 218
+PLAY_AREA_TOP_LEFT_Y = 215
+PLAY_AREA_BOTTOM_RIGHT_X = PLAY_AREA_TOP_LEFT_X + PLAY_AREA_WIDTH # 2240       
+PLAY_AREA_BOTTOM_RIGHT_Y = PLAY_AREA_TOP_LEFT_Y + PLAY_AREA_HEIGHT # 4271
+PLAY_AREA_TOP_RIGHT_X = PLAY_AREA_BOTTOM_RIGHT_X
+PLAY_AREA_TOP_RIGHT_Y = PLAY_AREA_TOP_LEFT_Y
+PLAY_AREA_BOTTOM_LEFT_X = PLAY_AREA_TOP_LEFT_X
+PLAY_AREA_BOTTOM_LEFT_Y = PLAY_AREA_BOTTOM_RIGHT_Y
+
+CONVERSION_FACTOR = PLAY_AREA_WIDTH / 1778
 
 # Ball size for rendering
-BALL_SIZE = 50
+BALL_SIZE = 60 # 52.4 mm = 60 pixels
 
 # Key line positions
-BAULK_LINE_Y = 824
-MIDDLE_LINE_Y = 1826
-MIDDLE_LINE_X = 912
+BAULK_LINE_Y = 1053 # 29 inches = 736 mm = 838 pixels from the PLAY_AREA_TOP_LEFT_Y
+LONG_MIDDLE_LINE_X = int(PLAY_AREA_TOP_LEFT_X + PLAY_AREA_WIDTH / 2)
+SHORT_MIDDLE_LINE_Y = int(PLAY_AREA_TOP_LEFT_Y + PLAY_AREA_HEIGHT / 2) # 2243
+
+# Additional middle line constants for reference_validator.py
+MIDDLE_LINE_X = LONG_MIDDLE_LINE_X
+MIDDLE_LINE_Y = SHORT_MIDDLE_LINE_Y
+
+D_RADIUS = 330 # 290mm = 330 pixels
 
 # Standard ball starting positions for snooker (based on actual image coordinates)
-YELLOW_SPOT = {"x": 646, "y": BAULK_LINE_Y}
-GREEN_SPOT = {"x": 1178, "y": BAULK_LINE_Y}
-BROWN_SPOT = {"x": MIDDLE_LINE_X, "y": BAULK_LINE_Y}
-BLUE_SPOT = {"x": MIDDLE_LINE_X, "y": MIDDLE_LINE_Y}
-PINK_SPOT = {"x": MIDDLE_LINE_X, "y": 2680}
-BLACK_SPOT = {"x": MIDDLE_LINE_X, "y": 3238}
+YELLOW_SPOT = {"x": int(LONG_MIDDLE_LINE_X - D_RADIUS), "y": BAULK_LINE_Y}
+GREEN_SPOT = {"x": int(LONG_MIDDLE_LINE_X + D_RADIUS), "y": BAULK_LINE_Y}
+BROWN_SPOT = {"x": LONG_MIDDLE_LINE_X, "y": BAULK_LINE_Y}
+BLUE_SPOT = {"x": LONG_MIDDLE_LINE_X, "y": SHORT_MIDDLE_LINE_Y}
+PINK_SPOT = {"x": LONG_MIDDLE_LINE_X, "y": int(SHORT_MIDDLE_LINE_Y + PLAY_AREA_HEIGHT / 4)} # 3257
+BLACK_SPOT = {"x": LONG_MIDDLE_LINE_X, "y": 3904} # 324 mm = 367 pixels from PLAY_AREA_BOTTOM_RIGHT_Y
 
 # Pocket dimensions (rectangular regions)
-CORNER_POCKET_WIDTH = 85
-CORNER_POCKET_HEIGHT = 85
-MIDDLE_POCKET_WIDTH = 75
-MIDDLE_POCKET_HEIGHT = 75
+CORNER_POCKET_WIDTH = 95
+MIDDLE_POCKET_WIDTH = 100
+
 
 # Pocket positions (center coordinates)
 POCKETS = {
-    "top_left": {"x": TABLE_LEFT, "y": TABLE_TOP},
-    "top_right": {"x": TABLE_RIGHT, "y": TABLE_TOP},
-    "middle_left": {"x": TABLE_LEFT, "y": MIDDLE_LINE_Y},
-    "middle_right": {"x": TABLE_RIGHT, "y": MIDDLE_LINE_Y},
-    "bottom_left": {"x": TABLE_LEFT, "y": TABLE_BOTTOM},
-    "bottom_right": {"x": TABLE_RIGHT, "y": TABLE_BOTTOM},
+    "top_left": {"x": PLAY_AREA_TOP_LEFT_X, "y": PLAY_AREA_TOP_LEFT_Y},
+    "top_right": {"x": PLAY_AREA_TOP_RIGHT_X, "y": PLAY_AREA_TOP_RIGHT_Y},
+    "middle_left": {"x": PLAY_AREA_TOP_LEFT_X, "y": SHORT_MIDDLE_LINE_Y},
+    "middle_right": {"x": PLAY_AREA_TOP_RIGHT_X, "y": SHORT_MIDDLE_LINE_Y},
+    "bottom_left": {"x": PLAY_AREA_BOTTOM_LEFT_X, "y": PLAY_AREA_BOTTOM_LEFT_Y},
+    "bottom_right": {"x": PLAY_AREA_BOTTOM_RIGHT_X, "y": PLAY_AREA_BOTTOM_RIGHT_Y},
 }
 
 # Ball colors and their point values
@@ -76,8 +100,8 @@ STANDARD_BALL_POSITIONS = {
 
 # Red ball triangle formation (15 balls)
 # Starting from the pink spot and forming a triangle towards the black spot
-RED_TRIANGLE_START_Y = PINK_SPOT["y"] + 52  # Start below pink spot
-RED_BALL_SPACING = 52  # Spacing between red balls
+RED_TRIANGLE_START_Y = PINK_SPOT["y"] + BALL_SIZE  # Start below pink spot
+RED_BALL_SPACING = BALL_SIZE+2  # Spacing between red balls
 
 def get_red_ball_positions() -> List[Dict[str, int]]:
     """
@@ -92,13 +116,13 @@ def get_red_ball_positions() -> List[Dict[str, int]]:
     row_balls = [1,2,3,4,5]  # Bottom to top
     
     for row_idx, num_balls in enumerate(row_balls):
-        y = RED_TRIANGLE_START_Y + (row_idx * RED_BALL_SPACING)
+        y = int(RED_TRIANGLE_START_Y + (row_idx * BALL_SIZE))
         
         # Center the balls in each row
-        start_x = MIDDLE_LINE_X - ((num_balls - 1) * RED_BALL_SPACING) // 2
+        start_x = int(LONG_MIDDLE_LINE_X - ((num_balls - 1) * RED_BALL_SPACING) / 2)
         
         for ball_idx in range(num_balls):
-            x = start_x + (ball_idx * RED_BALL_SPACING)
+            x = int(start_x + (ball_idx * RED_BALL_SPACING))
             positions.append({"x": x, "y": y})
     
     return positions
